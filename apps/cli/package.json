@@ -1,0 +1,28 @@
+{
+  "name": "@zcicd/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "zcicd": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@zcicd/compiler": "workspace:*",
+    "@zcicd/planner": "workspace:*",
+    "@zcicd/resolver": "workspace:*",
+    "@zcicd/scanner": "workspace:*",
+    "@zcicd/state": "workspace:*",
+    "@zcicd/workflow-ir": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

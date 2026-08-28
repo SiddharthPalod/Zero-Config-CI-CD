@@ -1,0 +1,60 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: spotiflix-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    container_name: spotiflix-api
+    build:
+      context: ./spotiflix
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - spotiflix/api/.env
+    environment:
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=file:./dev.db
+      - PYTHONUNBUFFERED=1
+      - OPENBLAS_NUM_THREADS=1
+      - NODE_ENV=development
+    volumes:
+      - ./spotiflix/api:/app/api
+      - ./spotiflix/ml:/app/ml
+      - /app/api/node_modules
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    container_name: spotiflix-frontend
+    build:
+      context: ./spotiflix/netflix
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_PROXY_TARGET=http://api:3001
+    volumes:
+      - ./spotiflix/netflix:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  redis_data:
+    driver: local
