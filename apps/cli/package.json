@@ -14,7 +14,9 @@
   "dependencies": {
     "@clack/prompts": "^0.10.0",
     "@zcicd/compiler": "workspace:*",
+    "@zcicd/github": "workspace:*",
     "@zcicd/planner": "workspace:*",
+    "@zcicd/reconciliation": "workspace:*",
     "@zcicd/resolver": "workspace:*",
     "@zcicd/scanner": "workspace:*",
     "@zcicd/security": "workspace:*",

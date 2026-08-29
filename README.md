@@ -62,6 +62,8 @@ Repository / Git URL
 | **`@zcicd/workflow-ir`** | Phase 4 AST | Strongly-typed Workflow Intermediate Representation (Jobs, DAG `needs`, Matrices, Triggers, Steps). |
 | **`@zcicd/compiler`** | Phase 4 Compiler | Workflow Builder, DAG Cycle Validator, and deterministic YAML emitter. |
 | **`@zcicd/security`** | Phase 6 Engine | Security Policy IR & Multi-artifact Security Compiler (Dependabot, CodeQL, Trivy, Audits). |
+| **`@zcicd/reconciliation`** | Phase 7 Engine | Semantic AST diffing & non-destructive merging with existing workflows. |
+| **`@zcicd/github`** | Phase 7 Automation | GitHub CLI & API integration for automated Pull Request creation. |
 | **`@zcicd/cli`** | Developer CLI | Terminal runner supporting local directory scanning and remote GitHub URL shallow-cloning. |
 
 ---

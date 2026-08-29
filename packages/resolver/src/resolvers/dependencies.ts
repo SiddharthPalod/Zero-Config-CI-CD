@@ -4,6 +4,19 @@ import { STARTER_WORKFLOWS_CATALOG } from "../catalog/starter-workflows.js";
 
 export function resolveDependencyInstall(action: PlannedAction): ResolvedPrimitive[] {
   const manager = action.inputs?.packageManager;
+  const customCommand = action.inputs?.customCommand;
+
+  if (typeof customCommand === "string" && customCommand.trim() !== "") {
+    return [
+      {
+        kind: "run",
+        run: customCommand,
+        reason: action.reason || "Install project dependencies.",
+        source: "engine/dependency-install",
+        actionId: action.id
+      }
+    ];
+  }
 
   if (typeof manager !== "string") {
     throw new Error(`dependency.install action "${action.id}" is missing packageManager`);
@@ -15,6 +28,7 @@ export function resolveDependencyInstall(action: PlannedAction): ResolvedPrimiti
         {
           kind: "uses",
           uses: "pnpm/action-setup@v4",
+          with: { version: "9" },
           reason: "pnpm package manager setup.",
           source: "pnpm/action-setup@v4",
           actionId: action.id

@@ -97,14 +97,14 @@ export function resolveSecurityPolicy(
     }
   }
 
-  // 2. Resolve Native Audits
+  // 2. Resolve Native Audits with auto-installation and monorepo directory traversal
   const nativeAudits: NativeAuditConfig[] = [];
   const runtimes = state.runtime.map(r => r.name);
 
   if (runtimes.includes("rust")) {
     nativeAudits.push({
       tool: "cargo-audit",
-      command: "cargo audit",
+      command: "cargo install cargo-audit --locked || true && cargo audit",
       failOnError: blockOnVulnerabilities
     });
   }
@@ -112,7 +112,11 @@ export function resolveSecurityPolicy(
   if (runtimes.includes("node")) {
     const isPnpm = state.packageManager.some(p => p.name === "pnpm");
     const isYarn = state.packageManager.some(p => p.name === "yarn");
-    const cmd = isPnpm ? "pnpm audit" : isYarn ? "yarn audit" : "npm audit --audit-level=high";
+    const cmd = isPnpm
+      ? "pnpm audit"
+      : isYarn
+      ? "yarn audit"
+      : "if [ -f package-lock.json ]; then npm audit --audit-level=high; else for dir in $(find . -name 'package-lock.json' -not -path '*/node_modules/*' -exec dirname {} \\;); do (cd \"$dir\" && echo \"Auditing $dir...\" && npm audit --audit-level=high); done; fi";
     nativeAudits.push({
       tool: "npm-audit",
       command: cmd,
@@ -123,7 +127,7 @@ export function resolveSecurityPolicy(
   if (runtimes.includes("python")) {
     nativeAudits.push({
       tool: "pip-audit",
-      command: "pip-audit",
+      command: "pip install pip-audit && if [ -f requirements.txt ]; then pip-audit -r requirements.txt; else for req in $(find . -name 'requirements.txt' -not -path '*/.*'); do echo \"Auditing $req...\" && pip-audit -r \"$req\"; done; fi",
       failOnError: blockOnVulnerabilities
     });
   }
@@ -131,7 +135,7 @@ export function resolveSecurityPolicy(
   if (runtimes.includes("go")) {
     nativeAudits.push({
       tool: "govulncheck",
-      command: "govulncheck ./...",
+      command: "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...",
       failOnError: blockOnVulnerabilities
     });
   }

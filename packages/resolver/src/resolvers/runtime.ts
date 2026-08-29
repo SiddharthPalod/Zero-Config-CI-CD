@@ -107,7 +107,6 @@ export function resolveGoTest(action: PlannedAction): ResolvedPrimitive[] {
 export function resolvePythonTest(action: PlannedAction): ResolvedPrimitive[] {
   const template = STARTER_WORKFLOWS_CATALOG["ci/python-app.yml"];
   const setupStep = template.steps.find(s => s.id === "setup-python");
-  const testStep = template.steps.find(s => s.id === "pytest");
 
   return [
     {
@@ -120,7 +119,14 @@ export function resolvePythonTest(action: PlannedAction): ResolvedPrimitive[] {
     },
     {
       kind: "run",
-      run: testStep?.run ?? "pytest",
+      run: "python -m pip install --upgrade pip pytest && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi && for req in $(find . -name 'requirements.txt' -not -path '*/.*' -not -path './requirements.txt'); do pip install -r \"$req\"; done",
+      reason: "Install Python dependencies and pytest test runner.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    },
+    {
+      kind: "run",
+      run: "pytest",
       reason: "Run Python tests with pytest according to starter workflow.",
       source: `actions/starter-workflows:${template.id}`,
       actionId: action.id

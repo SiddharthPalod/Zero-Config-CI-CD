@@ -16,9 +16,15 @@ importers:
       '@zcicd/compiler':
         specifier: workspace:*
         version: link:../../packages/compiler
+      '@zcicd/github':
+        specifier: workspace:*
+        version: link:../../packages/github
       '@zcicd/planner':
         specifier: workspace:*
         version: link:../../packages/planner
+      '@zcicd/reconciliation':
+        specifier: workspace:*
+        version: link:../../packages/reconciliation
       '@zcicd/resolver':
         specifier: workspace:*
         version: link:../../packages/resolver
@@ -79,11 +85,55 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0)
 
+  packages/github:
+    dependencies:
+      '@zcicd/security':
+        specifier: workspace:*
+        version: link:../security
+      '@zcicd/state':
+        specifier: workspace:*
+        version: link:../state
+      '@zcicd/workflow-ir':
+        specifier: workspace:*
+        version: link:../workflow-ir
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0)
+
   packages/planner:
     dependencies:
       '@zcicd/state':
         specifier: workspace:*
         version: link:../state
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0)
+
+  packages/reconciliation:
+    dependencies:
+      '@zcicd/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@zcicd/workflow-ir':
+        specifier: workspace:*
+        version: link:../workflow-ir
+      yaml:
+        specifier: ^2.7.0
+        version: 2.9.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

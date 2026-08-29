@@ -3,7 +3,7 @@ import type { WorkflowIR, WorkflowStep } from "@zcicd/workflow-ir";
 
 export const dependencyCachingPass: CompilerPass = {
   name: "dependency-caching",
-  description: "Injects native GitHub Actions dependency caching keys for Node, Python, Go, and Rust.",
+  description: "Injects native GitHub Actions dependency caching keys for Node, Python, Go, and Rust with monorepo path awareness.",
 
   transform(ir: WorkflowIR, context: CompilerContext): WorkflowIR {
     if (context.options?.enableCaching === false) {
@@ -37,7 +37,6 @@ export const dependencyCachingPass: CompilerPass = {
 
           const newSteps = [...job.steps];
           if (hasCheckout) {
-            // Insert after checkout (index 1)
             newSteps.splice(1, 0, cacheStep);
           } else {
             newSteps.unshift(cacheStep);
@@ -54,24 +53,35 @@ export const dependencyCachingPass: CompilerPass = {
       const updatedSteps = job.steps.map(step => {
         if (step.kind !== "uses") return step;
 
-        // Node.js setup caching
+        // Node.js setup caching with nested lockfile detection
         if (step.uses.startsWith("actions/setup-node")) {
+          const nodeLockPattern = isPnpm ? "**/pnpm-lock.yaml" : isYarn ? "**/yarn.lock" : isBun ? "**/bun.lockb" : "**/package-lock.json";
+          const hasNestedLockfile = context.state?.packageManager.some(pm =>
+            pm.evidence.some(ev => ev.source.includes("/") || ev.source.includes("\\"))
+          );
+
           return {
             ...step,
             with: {
               ...step.with,
-              cache: nodeCache
+              cache: nodeCache,
+              ...(hasNestedLockfile ? { "cache-dependency-path": nodeLockPattern } : {})
             }
           };
         }
 
-        // Python setup caching
+        // Python setup caching with nested requirements detection
         if (step.uses.startsWith("actions/setup-python")) {
+          const hasNestedReqs = context.state?.runtime.some(rt =>
+            rt.evidence.some(ev => ev.source.toLowerCase().includes("requirements.txt") && (ev.source.includes("/") || ev.source.includes("\\")))
+          );
+
           return {
             ...step,
             with: {
               ...step.with,
-              cache: "pip"
+              cache: "pip",
+              ...(hasNestedReqs ? { "cache-dependency-path": "**/requirements.txt" } : {})
             }
           };
         }

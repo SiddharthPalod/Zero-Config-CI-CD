@@ -44,7 +44,7 @@ describe("Phase 6 - Security Policy Compiler", () => {
 
     // Native audits
     expect(artifacts.policy.nativeAudits).toHaveLength(1);
-    expect(artifacts.policy.nativeAudits[0].command).toBe("cargo audit");
+    expect(artifacts.policy.nativeAudits[0].command).toContain("cargo audit");
 
     // Security workflow YAML
     expect(artifacts.securityWorkflowYaml).toBeDefined();
