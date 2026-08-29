@@ -24,10 +24,17 @@ export function compileSecurityWorkflowYAML(policy: SecurityPolicyIR): string {
     }
 
     for (const audit of policy.nativeAudits) {
-      steps.push({
+      const stepConfig: Record<string, unknown> = {
         name: `Run ${audit.tool}`,
         run: audit.command
-      });
+      };
+
+      // If policy is not blocking (Standard / Minimal), let CI report CVEs without blocking merge
+      if (!audit.failOnError) {
+        stepConfig["continue-on-error"] = true;
+      }
+
+      steps.push(stepConfig);
     }
 
     jobs["dependency-audit"] = {

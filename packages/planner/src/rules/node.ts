@@ -36,14 +36,14 @@ export const nodeSetupRule: Rule = {
       sourceRule: "node-setup"
     });
 
-    // Monorepo-aware dependency installation & test execution
+    // Monorepo-aware dependency installation (guarded against missing root package.json)
     const installCmd = isPnpm
       ? "if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi"
       : isYarn
       ? "if [ -f yarn.lock ]; then yarn install --immutable; else yarn install; fi"
       : isBun
       ? "bun install --frozen-lockfile || bun install"
-      : "if [ -f package-lock.json ]; then npm ci; else npm install; fi; for dir in $(find . -name 'package.json' -not -path '*/node_modules/*' -not -path './package.json' -exec dirname {} \\;); do if [ -f \"$dir/package-lock.json\" ]; then (cd \"$dir\" && npm ci); else (cd \"$dir\" && npm install); fi; done";
+      : "if [ -f package.json ]; then if [ -f package-lock.json ]; then npm ci; else npm install; fi; fi; for dir in $(find . -name 'package.json' -not -path '*/node_modules/*' -not -path './package.json' -exec dirname {} \\;); do if [ -f \"$dir/package-lock.json\" ]; then (cd \"$dir\" && npm ci); else (cd \"$dir\" && npm install); fi; done";
 
     actions.push({
       id: "node-install",
@@ -56,13 +56,14 @@ export const nodeSetupRule: Rule = {
       sourceRule: "node-setup"
     });
 
+    // Monorepo-aware test execution (guarded against missing root package.json)
     const testCmd = isPnpm
       ? "pnpm test --if-present"
       : isYarn
       ? "yarn test"
       : isBun
       ? "bun test"
-      : "npm test --if-present; for dir in $(find . -name 'package.json' -not -path '*/node_modules/*' -not -path './package.json' -exec dirname {} \\;); do (cd \"$dir\" && npm test --if-present); done";
+      : "if [ -f package.json ]; then npm test --if-present; fi; for dir in $(find . -name 'package.json' -not -path '*/node_modules/*' -not -path './package.json' -exec dirname {} \\;); do (cd \"$dir\" && npm test --if-present); done";
 
     actions.push({
       id: "node-test",

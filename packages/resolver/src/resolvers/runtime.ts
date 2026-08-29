@@ -126,8 +126,8 @@ export function resolvePythonTest(action: PlannedAction): ResolvedPrimitive[] {
     },
     {
       kind: "run",
-      run: "pytest",
-      reason: "Run Python tests with pytest according to starter workflow.",
+      run: "pytest || [ $? -eq 5 ]",
+      reason: "Run Python tests with pytest according to starter workflow (pass if no tests collected).",
       source: `actions/starter-workflows:${template.id}`,
       actionId: action.id
     }
