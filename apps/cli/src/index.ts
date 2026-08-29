@@ -3,31 +3,68 @@ import { scanRepository } from "@zcicd/scanner";
 import { planWorkflow } from "@zcicd/planner";
 import { resolvePlan } from "@zcicd/resolver";
 import { buildWorkflowIR, compileWorkflowYAML } from "@zcicd/compiler";
+import { compileSecurityPolicy } from "@zcicd/security";
 import { withRepository } from "./git.js";
 import { printScanResults } from "./formatter.js";
+import { runInteractiveWizard as runWizardV1 } from "./wizard.js";
+import { runInteractiveWizardV2 as runWizardV2 } from "./wizard2.js";
 
-const target = process.argv[2] ?? ".";
+const args = process.argv.slice(2);
 
-try {
-  await withRepository(target, async (scanPath) => {
-    // 1. Phase 1: Deterministic Scanner
-    const state = await scanRepository(scanPath);
+// Options
+const isInspectMode = args.includes("--inspect") || args.includes("--print");
+const isV1 = args.includes("--v1");
+const targetArg = args.find(arg => !arg.startsWith("-"));
 
-    // 2. Phase 2: Capability Model & Policy Rules
-    const plan = planWorkflow(state);
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(`
+Zero-Config CI/CD Engine
 
-    // 3. Phase 3: Starter Workflow Knowledge Resolver
-    const resolvedPlan = resolvePlan(plan);
+Usage:
+  zcicd [options] [path|url]
 
-    // 4. Phase 4: Typed Workflow IR & Deterministic Compiler
-    const ir = buildWorkflowIR(plan, resolvedPlan);
-    const compiledYaml = compileWorkflowYAML(ir);
+Options:
+  --v2                 Run Wizard v2 (Live compiler pipeline with rich animations - Default)
+  --v1                 Run Wizard v1 (Minimalist fast wizard)
+  --inspect, --print   Run non-interactive inspection and print state, IR, YAML, and security to stdout
+  --help, -h          Show this help message
 
-    // Render results
-    printScanResults(target, state, plan, resolvedPlan, ir, compiledYaml);
-  });
-} catch (error) {
-  console.error("\n[Error] Failed to scan, plan, or compile repository:");
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
+Examples:
+  zcicd
+  zcicd --v1
+  zcicd ./my-project
+  zcicd --inspect https://github.com/expressjs/express
+`);
+  process.exit(0);
+}
+
+if (!isInspectMode && !targetArg) {
+  // Interactive Wizard Modes
+  if (isV1) {
+    await runWizardV1();
+  } else {
+    await runWizardV2();
+  }
+} else {
+  // Direct / Inspect Mode
+  const target = targetArg ?? ".";
+  try {
+    await withRepository(target, async (scanPath) => {
+      const state = await scanRepository(scanPath);
+      const plan = planWorkflow(state);
+      const resolvedPlan = resolvePlan(plan);
+      const ir = buildWorkflowIR(plan, resolvedPlan);
+      const compiledYaml = compileWorkflowYAML(ir, {
+        state,
+        plan,
+        resolved: resolvedPlan
+      });
+      const security = compileSecurityPolicy(state, "standard");
+      printScanResults(target, state, plan, resolvedPlan, ir, compiledYaml, security);
+    });
+  } catch (error) {
+    console.error("\n[Error] Failed to scan, plan, or compile repository:");
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
 }

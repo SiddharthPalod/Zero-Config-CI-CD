@@ -3,15 +3,11 @@ import type { StarterWorkflowCatalog } from "./types.js";
 export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
   "ci/node.js.yml": {
     id: "ci/node.js.yml",
-    name: "Node.js CI",
-    description: "Build and test a Node.js project with npm, yarn, or pnpm.",
+    name: "Node.js Package",
+    description: "Build and test a Node.js package with npm, pnpm, or yarn.",
     sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/node.js.yml",
     languages: ["javascript", "typescript"],
     triggers: ["push", "pull_request"],
-    defaultMatrix: {
-      key: "node-version",
-      values: ["18.x", "20.x", "22.x"]
-    },
     steps: [
       {
         id: "checkout",
@@ -56,7 +52,7 @@ export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
 
   "ci/go.yml": {
     id: "ci/go.yml",
-    name: "Go CI",
+    name: "Go",
     description: "Build and test a Go project.",
     sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/go.yml",
     languages: ["go"],
@@ -98,15 +94,11 @@ export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
 
   "ci/python-app.yml": {
     id: "ci/python-app.yml",
-    name: "Python Application CI",
+    name: "Python application",
     description: "Create and test a Python application on multiple Python versions.",
     sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/python-app.yml",
     languages: ["python"],
     triggers: ["push", "pull_request"],
-    defaultMatrix: {
-      key: "python-version",
-      values: ["3.10", "3.11", "3.12"]
-    },
     steps: [
       {
         id: "checkout",
@@ -193,11 +185,11 @@ export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
         uses: "actions/checkout@v4"
       },
       {
-        id: "cargo-build",
-        name: "Build",
+        id: "cargo-check",
+        name: "Check",
         category: "build",
         kind: "run",
-        run: "cargo build --verbose"
+        run: "cargo check --verbose"
       },
       {
         id: "cargo-test",
@@ -205,6 +197,13 @@ export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
         category: "test",
         kind: "run",
         run: "cargo test --verbose"
+      },
+      {
+        id: "cargo-build",
+        name: "Build",
+        category: "build",
+        kind: "run",
+        run: "cargo build --verbose"
       }
     ]
   }

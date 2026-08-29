@@ -4,7 +4,9 @@ import {
   resolveRuntimeSetup,
   resolveGoBuild,
   resolveGoTest,
-  resolvePythonTest
+  resolvePythonTest,
+  resolveRustBuild,
+  resolveRustTest
 } from "./resolvers/runtime.js";
 import { resolveDependencyInstall } from "./resolvers/dependencies.js";
 import { resolveDockerBuild } from "./resolvers/docker.js";
@@ -20,5 +22,7 @@ export const resolverRegistry: Record<string, ResolverFunction> = {
   "test.e2e": resolveE2ETest,
   "go.build": resolveGoBuild,
   "go.test": resolveGoTest,
-  "python.test": resolvePythonTest
+  "python.test": resolvePythonTest,
+  "rust.build": resolveRustBuild,
+  "rust.test": resolveRustTest
 };

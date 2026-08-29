@@ -33,6 +33,7 @@ export type WorkflowJob = {
   id: string;
   name?: string;
   runsOn: string;
+  timeoutMinutes?: number;
   needs?: string[];
   strategy?: WorkflowStrategy;
   permissions?: Record<string, "read" | "write" | "none">;

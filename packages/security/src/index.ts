@@ -1,0 +1,34 @@
+import type { ProjectState } from "@zcicd/state";
+import type { SecurityLevel, GeneratedSecurityArtifacts } from "./types.js";
+import { resolveSecurityPolicy } from "./resolver.js";
+import { compileDependabotYAML } from "./compilers/dependabot.js";
+import { compileCodeQLYAML } from "./compilers/codeql.js";
+import { compileSecurityWorkflowYAML } from "./compilers/audit.js";
+
+export * from "./types.js";
+export * from "./resolver.js";
+export * from "./compilers/dependabot.js";
+export * from "./compilers/codeql.js";
+export * from "./compilers/audit.js";
+
+export function compileSecurityPolicy(
+  state: ProjectState,
+  level: SecurityLevel = "standard"
+): GeneratedSecurityArtifacts {
+  const policy = resolveSecurityPolicy(state, level);
+
+  if (level === "none") {
+    return { policy };
+  }
+
+  const dependabotYaml = compileDependabotYAML(policy);
+  const codeqlYaml = compileCodeQLYAML(policy);
+  const securityWorkflowYaml = compileSecurityWorkflowYAML(policy);
+
+  return {
+    policy,
+    dependabotYaml: dependabotYaml || undefined,
+    codeqlYaml: codeqlYaml || undefined,
+    securityWorkflowYaml: securityWorkflowYaml || undefined
+  };
+}

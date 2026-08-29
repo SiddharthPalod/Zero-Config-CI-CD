@@ -10,14 +10,15 @@ export function isRemoteUrl(target: string): boolean {
 
 export async function withRepository<T>(
   target: string,
-  action: (path: string) => Promise<T>
+  action: (path: string) => Promise<T>,
+  onProgress?: (message: string) => void
 ): Promise<T> {
   if (!isRemoteUrl(target)) {
     return action(target);
   }
 
   const tempPath = join(tmpdir(), `zcicd-scan-${randomUUID()}`);
-  console.log(`Cloning remote repository: ${target} ...`);
+  onProgress?.(`Fetching & shallow-cloning remote repository: ${target}...`);
 
   try {
     execSync(`git clone --depth 1 ${target} "${tempPath}"`, { stdio: "pipe" });

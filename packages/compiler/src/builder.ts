@@ -44,6 +44,7 @@ export function buildWorkflowIR(
   const nodeSteps: WorkflowStep[] = [];
   const pythonSteps: WorkflowStep[] = [];
   const goSteps: WorkflowStep[] = [];
+  const rustSteps: WorkflowStep[] = [];
   const dockerSteps: WorkflowStep[] = [];
   const generalSteps: WorkflowStep[] = [];
 
@@ -53,11 +54,37 @@ export function buildWorkflowIR(
     const run = primitive.kind === "run" ? primitive.run : "";
     const source = primitive.source ?? "";
 
-    if (uses.includes("setup-node") || uses.includes("pnpm") || source.includes("node") || run.includes("npm") || run.includes("yarn") || run.includes("vitest") || run.includes("jest") || run.includes("playwright")) {
+    if (
+      uses.includes("setup-node") ||
+      uses.includes("pnpm") ||
+      source.includes("node") ||
+      run.startsWith("npm") ||
+      run.startsWith("yarn") ||
+      run.startsWith("pnpm") ||
+      run.includes("vitest") ||
+      run.includes("jest") ||
+      run.includes("playwright")
+    ) {
       nodeSteps.push(step);
-    } else if (uses.includes("setup-python") || source.includes("python") || run.includes("pytest") || run.includes("pip")) {
+    } else if (
+      uses.includes("setup-python") ||
+      source.includes("python") ||
+      run.startsWith("pytest") ||
+      run.startsWith("pip")
+    ) {
       pythonSteps.push(step);
-    } else if (uses.includes("setup-go") || source.includes("go") || run.includes("go ")) {
+    } else if (
+      source.includes("rust") ||
+      run.startsWith("cargo") ||
+      run.includes("cargo ")
+    ) {
+      rustSteps.push(step);
+    } else if (
+      uses.includes("setup-go") ||
+      source.includes("go.yml") ||
+      run.startsWith("go ") ||
+      run.startsWith("go\t")
+    ) {
       goSteps.push(step);
     } else if (uses.includes("docker") || source.includes("docker")) {
       dockerSteps.push(step);
@@ -99,6 +126,17 @@ export function buildWorkflowIR(
       name: "Go CI",
       runsOn: runner,
       steps: [CHECKOUT_STEP, ...goSteps]
+    });
+  }
+
+  if (rustSteps.length > 0) {
+    const id = "test-rust";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Rust CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...rustSteps]
     });
   }
 

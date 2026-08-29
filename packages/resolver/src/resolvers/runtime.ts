@@ -127,3 +127,33 @@ export function resolvePythonTest(action: PlannedAction): ResolvedPrimitive[] {
     }
   ];
 }
+
+export function resolveRustBuild(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/rust.yml"];
+  const buildStep = template.steps.find(s => s.id === "cargo-build");
+
+  return [
+    {
+      kind: "run",
+      run: buildStep?.run ?? "cargo build --verbose",
+      reason: "Compile Rust crates according to starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveRustTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/rust.yml"];
+  const testStep = template.steps.find(s => s.id === "cargo-test");
+
+  return [
+    {
+      kind: "run",
+      run: testStep?.run ?? "cargo test --verbose",
+      reason: "Run Rust tests according to starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}

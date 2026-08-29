@@ -12,12 +12,15 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@clack/prompts": "^0.10.0",
     "@zcicd/compiler": "workspace:*",
     "@zcicd/planner": "workspace:*",
     "@zcicd/resolver": "workspace:*",
     "@zcicd/scanner": "workspace:*",
+    "@zcicd/security": "workspace:*",
     "@zcicd/state": "workspace:*",
-    "@zcicd/workflow-ir": "workspace:*"
+    "@zcicd/workflow-ir": "workspace:*",
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

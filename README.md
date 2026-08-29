@@ -61,27 +61,32 @@ Repository / Git URL
 | **`@zcicd/resolver`** | Phase 3 Engine | Knowledge catalog containing normalized GitHub Starter Workflows with provenance tracking. |
 | **`@zcicd/workflow-ir`** | Phase 4 AST | Strongly-typed Workflow Intermediate Representation (Jobs, DAG `needs`, Matrices, Triggers, Steps). |
 | **`@zcicd/compiler`** | Phase 4 Compiler | Workflow Builder, DAG Cycle Validator, and deterministic YAML emitter. |
+| **`@zcicd/security`** | Phase 6 Engine | Security Policy IR & Multi-artifact Security Compiler (Dependabot, CodeQL, Trivy, Audits). |
 | **`@zcicd/cli`** | Developer CLI | Terminal runner supporting local directory scanning and remote GitHub URL shallow-cloning. |
 
 ---
 
 ## 🚀 Quick Start
 
-### Installation & Build
+### 1. Interactive CLI Wizard
+Run the interactive wizard (defaults to Wizard v2 with live multi-phase visual feedback):
+```bash
+pnpm --filter @zcicd/cli dev          # Wizard v2 (Live compiler pipeline)
+pnpm --filter @zcicd/cli dev --v1     # Wizard v1 (Minimalist fast flow)
+```
+
+### 2. Non-Interactive Inspection & Scripting
+Print the AST, DAG structure, and compiled YAML to stdout:
+```bash
+pnpm --filter @zcicd/cli dev --inspect "../path-to-project"
+pnpm --filter @zcicd/cli dev --inspect "https://github.com/expressjs/express"
+```
+
+### 3. Build & Test Monorepo
 ```bash
 pnpm install
-pnpm build
-pnpm test
-```
-
-### Scan & Compile a Local Project
-```bash
-pnpm --filter @zcicd/cli dev "../path-to-project"
-```
-
-### Scan & Compile a Remote GitHub Repository
-```bash
-pnpm --filter @zcicd/cli dev "https://github.com/expressjs/express"
+pnpm -r build
+pnpm -r test
 ```
 
 ---
@@ -102,7 +107,7 @@ pnpm --filter @zcicd/cli dev "https://github.com/expressjs/express"
 - [x] **Phase 2:** Capability Model + Policy Rules Engine (Capabilities normalization, Action deduplication)
 - [x] **Phase 3 & 3B:** Starter Workflow Knowledge Catalog & Resolver (Ingestion of `actions/starter-workflows`, Provenance tracking)
 - [x] **Phase 4:** Typed Workflow IR & Deterministic Compiler (Job partitioning, DAG cycle validation, YAML emitter)
-- [ ] **Phase 5:** Optimization Passes (Parallelization, Matrix generation, Path filtering, Caching)
+- [x] **Phase 5:** Optimization Passes (Dependency Caching, Job Timeouts, Concurrency Cancellation, Matrix Testing)
 - [ ] **Phase 6:** Security Policy Compiler (Dependabot, CodeQL, Container scanning, Policy levels)
 - [ ] **Phase 7:** Workflow Reconciliation + GitHub PR Automation (Desired vs Current diffing)
 - [ ] **Phase 8:** Webhooks & Continuous Adaptation

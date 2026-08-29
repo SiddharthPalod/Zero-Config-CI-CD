@@ -2,6 +2,7 @@ import type { ProjectState } from "@zcicd/state";
 import type { WorkflowPlan } from "@zcicd/planner";
 import type { ResolvedWorkflowPlan } from "@zcicd/resolver";
 import type { WorkflowIR } from "@zcicd/workflow-ir";
+import type { GeneratedSecurityArtifacts } from "@zcicd/security";
 
 export function printScanResults(
   target: string,
@@ -9,7 +10,8 @@ export function printScanResults(
   plan: WorkflowPlan,
   resolved?: ResolvedWorkflowPlan,
   ir?: WorkflowIR,
-  compiledYaml?: string
+  compiledYaml?: string,
+  security?: GeneratedSecurityArtifacts
 ): void {
   console.log(`\nScanning Target: ${target}\n`);
 
@@ -75,6 +77,27 @@ export function printScanResults(
   if (compiledYaml) {
     console.log("\n=== COMPILED GITHUB ACTIONS YAML (.github/workflows/ci.yml) ===");
     console.log(compiledYaml);
+  }
+
+  if (security) {
+    console.log("\n=== SECURITY POLICY COMPILER (Level: " + security.policy.level + ") ===");
+    console.log(`Dependabot targets: ${security.policy.dependabot.ecosystems.length}`);
+    console.log(`CodeQL languages: ${security.policy.codeql.languages.join(", ") || "none"}`);
+    console.log(`Native audits: ${security.policy.nativeAudits.map(a => a.tool).join(", ") || "none"}`);
+    console.log(`Container scanning: ${security.policy.containerScanning.enabled ? "enabled" : "disabled"}`);
+
+    if (security.dependabotYaml) {
+      console.log("\n--- .github/dependabot.yml ---");
+      console.log(security.dependabotYaml);
+    }
+    if (security.codeqlYaml) {
+      console.log("\n--- .github/workflows/codeql.yml ---");
+      console.log(security.codeqlYaml);
+    }
+    if (security.securityWorkflowYaml) {
+      console.log("\n--- .github/workflows/security.yml ---");
+      console.log(security.securityWorkflowYaml);
+    }
   }
 
   if (plan.diagnostics.length > 0) {
