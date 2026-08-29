@@ -16,6 +16,12 @@ import { cppDetector } from "./detectors/cpp.js";
 import { denoDetector } from "./detectors/deno.js";
 import { swiftDetector } from "./detectors/swift.js";
 
+import { awsDetector } from "./detectors/aws.js";
+import { gcpDetector } from "./detectors/gcp.js";
+import { azureDetector } from "./detectors/azure.js";
+import { k8sDetector } from "./detectors/k8s.js";
+import { terraformDetector } from "./detectors/terraform.js";
+
 const detectors = [
   nodeDetector,
   pythonDetector,
@@ -30,7 +36,12 @@ const detectors = [
   elixirDetector,
   cppDetector,
   denoDetector,
-  swiftDetector
+  swiftDetector,
+  awsDetector,
+  gcpDetector,
+  azureDetector,
+  k8sDetector,
+  terraformDetector
 ];
 
 export async function scanRepository(root: string): Promise<ProjectState> {

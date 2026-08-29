@@ -46,7 +46,13 @@ export type CapabilityId =
   | "tool.prettier"
 
   | "infra.docker"
-  | "infra.docker-compose";
+  | "infra.docker-compose"
+  | "infra.aws"
+  | "infra.gcp"
+  | "infra.azure"
+  | "infra.kubernetes"
+  | "infra.terraform"
+  | "infra.ghcr";
 
 export type ResolvedCapability = {
   id: CapabilityId;
@@ -83,7 +89,13 @@ export type ActionType =
   | "deno.test"
   | "swift.build"
   | "swift.test"
-  | "docker.build";
+  | "docker.build"
+  | "deploy.aws"
+  | "deploy.gcp"
+  | "deploy.azure"
+  | "deploy.kubernetes"
+  | "deploy.terraform"
+  | "deploy.ghcr";
 
 export type PlannedAction = {
   id: string;

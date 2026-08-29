@@ -16,6 +16,13 @@ import { cppRule } from "./rules/cpp.js";
 import { denoRule } from "./rules/deno.js";
 import { swiftRule } from "./rules/swift.js";
 
+import { deployAwsRule } from "./rules/deploy-aws.js";
+import { deployGcpRule } from "./rules/deploy-gcp.js";
+import { deployAzureRule } from "./rules/deploy-azure.js";
+import { deployK8sRule } from "./rules/deploy-k8s.js";
+import { deployTerraformRule } from "./rules/deploy-terraform.js";
+import { deployGhcrRule } from "./rules/deploy-ghcr.js";
+
 import { jestRule, vitestRule, playwrightRule } from "./rules/testing.js";
 
 const rules: Rule[] = [
@@ -35,7 +42,13 @@ const rules: Rule[] = [
   elixirRule,
   cppRule,
   denoRule,
-  swiftRule
+  swiftRule,
+  deployAwsRule,
+  deployGcpRule,
+  deployAzureRule,
+  deployK8sRule,
+  deployTerraformRule,
+  deployGhcrRule
 ];
 
 export function planWorkflow(state: ProjectState): WorkflowPlan {

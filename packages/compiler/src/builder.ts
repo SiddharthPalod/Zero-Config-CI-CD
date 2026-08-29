@@ -38,7 +38,7 @@ export function buildWorkflowIR(
 ): WorkflowIR {
   const runner = options.defaultRunner ?? "ubuntu-latest";
   const branches = options.defaultBranches ?? ["main"];
-  const workflowName = options.workflowName ?? "CI";
+  const workflowName = options.workflowName ?? "CI/CD Pipeline";
 
   // Bucket resolved primitives into target job domains
   const nodeSteps: WorkflowStep[] = [];
@@ -55,6 +55,15 @@ export function buildWorkflowIR(
   const denoSteps: WorkflowStep[] = [];
   const swiftSteps: WorkflowStep[] = [];
   const dockerSteps: WorkflowStep[] = [];
+
+  // Deployment Steps
+  const awsDeploySteps: WorkflowStep[] = [];
+  const gcpDeploySteps: WorkflowStep[] = [];
+  const azureDeploySteps: WorkflowStep[] = [];
+  const k8sDeploySteps: WorkflowStep[] = [];
+  const terraformDeploySteps: WorkflowStep[] = [];
+  const ghcrDeploySteps: WorkflowStep[] = [];
+
   const generalSteps: WorkflowStep[] = [];
 
   for (const primitive of resolved.primitives) {
@@ -64,7 +73,22 @@ export function buildWorkflowIR(
     const source = primitive.source ?? "";
     const actionId = primitive.actionId ?? "";
 
-    if (
+    // Deployments
+    if (actionId.startsWith("deploy-aws") || source.includes("deployments/aws.yml")) {
+      awsDeploySteps.push(step);
+    } else if (actionId.startsWith("deploy-gcp") || source.includes("google-cloudrun")) {
+      gcpDeploySteps.push(step);
+    } else if (actionId.startsWith("deploy-azure") || source.includes("azure-container-webapp")) {
+      azureDeploySteps.push(step);
+    } else if (actionId.startsWith("deploy-k8s") || source.includes("kubernetes-service-helm")) {
+      k8sDeploySteps.push(step);
+    } else if (actionId.startsWith("deploy-terraform") || source.includes("deployments/terraform.yml")) {
+      terraformDeploySteps.push(step);
+    } else if (actionId.startsWith("deploy-ghcr") || source.includes("docker-publish")) {
+      ghcrDeploySteps.push(step);
+    }
+    // CI Runtimes
+    else if (
       uses.includes("setup-node") ||
       uses.includes("pnpm") ||
       source.includes("node") ||
@@ -313,6 +337,81 @@ export function buildWorkflowIR(
       runsOn: runner,
       needs: testJobIds.length > 0 ? testJobIds : undefined,
       steps: [CHECKOUT_STEP, ...dockerSteps]
+    });
+  }
+
+  // Downstream Deployment Jobs
+  const deployGuardIf = "github.ref == 'refs/heads/main' && github.event_name == 'push'";
+  const cdNeeds = testJobIds.length > 0 ? testJobIds : undefined;
+
+  if (awsDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-aws",
+      name: "Deploy to Amazon ECS",
+      runsOn: runner,
+      if: deployGuardIf,
+      environment: "production",
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...awsDeploySteps]
+    });
+  }
+
+  if (gcpDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-gcp",
+      name: "Deploy to Google Cloud Run",
+      runsOn: runner,
+      if: deployGuardIf,
+      environment: "production",
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...gcpDeploySteps]
+    });
+  }
+
+  if (azureDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-azure",
+      name: "Deploy to Azure Web App",
+      runsOn: runner,
+      if: deployGuardIf,
+      environment: "production",
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...azureDeploySteps]
+    });
+  }
+
+  if (k8sDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-k8s",
+      name: "Deploy to Kubernetes",
+      runsOn: runner,
+      if: deployGuardIf,
+      environment: "production",
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...k8sDeploySteps]
+    });
+  }
+
+  if (terraformDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-terraform",
+      name: "Terraform Apply",
+      runsOn: runner,
+      if: deployGuardIf,
+      environment: "production",
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...terraformDeploySteps]
+    });
+  }
+
+  if (ghcrDeploySteps.length > 0) {
+    jobs.push({
+      id: "deploy-ghcr",
+      name: "Publish Docker Image (GHCR)",
+      runsOn: runner,
+      if: deployGuardIf,
+      needs: cdNeeds,
+      steps: [CHECKOUT_STEP, ...ghcrDeploySteps]
     });
   }
 

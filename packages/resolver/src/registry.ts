@@ -23,6 +23,14 @@ import {
 import { resolveDependencyInstall } from "./resolvers/dependencies.js";
 import { resolveDockerBuild } from "./resolvers/docker.js";
 import { resolveUnitTest, resolveE2ETest } from "./resolvers/testing.js";
+import {
+  resolveDeployAws,
+  resolveDeployGcp,
+  resolveDeployAzure,
+  resolveDeployKubernetes,
+  resolveDeployTerraform,
+  resolveDeployGhcr
+} from "./resolvers/deployment.js";
 
 type ResolverFunction = (action: PlannedAction) => ResolvedPrimitive[];
 
@@ -49,5 +57,13 @@ export const resolverRegistry: Record<string, ResolverFunction> = {
   "cpp.test": resolveCppTest,
   "deno.test": resolveDenoTest,
   "swift.build": resolveSwiftBuild,
-  "swift.test": resolveSwiftTest
+  "swift.test": resolveSwiftTest,
+
+  // Deployment Resolvers
+  "deploy.aws": resolveDeployAws,
+  "deploy.gcp": resolveDeployGcp,
+  "deploy.azure": resolveDeployAzure,
+  "deploy.kubernetes": resolveDeployKubernetes,
+  "deploy.terraform": resolveDeployTerraform,
+  "deploy.ghcr": resolveDeployGhcr
 };

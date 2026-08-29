@@ -30,6 +30,16 @@ export type PackageManagerName =
   | "pub"
   | "mix";
 
+export type InfrastructureName =
+  | "docker"
+  | "kubernetes"
+  | "terraform"
+  | "aws"
+  | "gcp"
+  | "azure"
+  | "ghcr"
+  | "helm";
+
 export type Evidence = {
   source: string;
   value: string;

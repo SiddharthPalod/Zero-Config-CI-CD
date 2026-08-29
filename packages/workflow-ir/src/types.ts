@@ -33,6 +33,8 @@ export type WorkflowJob = {
   id: string;
   name?: string;
   runsOn: string;
+  if?: string;
+  environment?: string;
   timeoutMinutes?: number;
   needs?: string[];
   strategy?: WorkflowStrategy;

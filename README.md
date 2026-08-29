@@ -66,10 +66,10 @@ Repository / Remote Git URL
 | Package | Role | Description |
 | :--- | :--- | :--- |
 | **`@zcicd/state`** | Data Contracts | Pure TypeScript interfaces representing discovered project facts, infrastructure markers, and evidence. |
-| **`@zcicd/scanner`** | Phase 1 Engine | High-performance filesystem crawler and deterministic detectors for Node, Python, Go, Rust, Docker, Java, etc. |
-| **`@zcicd/planner`** | Phase 2 Engine | Capability vocabulary normalizer and declarative rule evaluation engine. |
+| **`@zcicd/scanner`** | Phase 1 Engine | High-performance filesystem crawler and deterministic detectors for Node, Python, Go, Rust, Docker, Java, AWS, GCP, Azure, K8s, Terraform, etc. |
+| **`@zcicd/planner`** | Phase 2 Engine | Capability vocabulary normalizer and declarative rule evaluation engine for CI and CD. |
 | **`@zcicd/resolver`** | Phase 3 Engine | Knowledge catalog containing normalized GitHub Starter Workflows with provenance tracking. |
-| **`@zcicd/workflow-ir`** | Phase 4 AST | Strongly-typed Workflow Intermediate Representation (Jobs, DAG `needs`, Matrices, Triggers, Steps). |
+| **`@zcicd/workflow-ir`** | Phase 4 AST | Strongly-typed Workflow Intermediate Representation (Jobs, DAG `needs`, Environments, Conditions, Steps). |
 | **`@zcicd/compiler`** | Phase 4/5 Compiler | Workflow Builder, DAG Cycle Validator, and deterministic YAML emitter with optimization passes. |
 | **`@zcicd/security`** | Phase 6 Engine | Security Policy IR & Multi-artifact Security Compiler (Dependabot, CodeQL, Code Scanning, Trivy, Audits). |
 | **`@zcicd/reconciliation`** | Phase 7 Engine | Semantic AST diffing & non-destructive merging with existing `.github/workflows`. |
@@ -106,8 +106,8 @@ pnpm -r test
 ## 💡 Core Invariants
 
 1. **Deterministic Policy over AI Guessing:** Workflow requirements are generated through strict, provenance-backed rule evaluation.
-2. **Compiler-Independent Workflow IR:** The intermediate representation (`WorkflowIR`) is a first-class, inspectable AST completely decoupled from YAML serialization. Even if the YAML compiler is deleted, the Planner + Resolver still produce a full workflow model.
-3. **Failure Domain Isolation:** Polyglot projects (e.g. Node + Python + Docker) are automatically partitioned into isolated, concurrent jobs with proper DAG dependencies.
+2. **Compiler-Independent Workflow IR:** The intermediate representation (`WorkflowIR`) is a first-class, inspectable AST completely decoupled from YAML serialization.
+3. **Failure Domain & Deployment Isolation:** Polyglot test jobs run in parallel, while CD jobs (`deploy-*`) are strictly guarded behind CI completion (`needs: [test-*]`).
 4. **Monorepo & Polyglot Path Awareness:** Discovers nested package manifests (`package-lock.json`, `requirements.txt`, `Cargo.toml`, `go.mod`), injects recursive path caching (`cache-dependency-path`), and handles projects with or without root configurations.
 5. **Non-Destructive Reconciliation:** When existing workflows contain custom deployment or notification steps, the AST diff engine preserves them during upgrades.
 6. **Provenance Tracking:** Every resolved step preserves its origin (e.g. `source: actions/starter-workflows:ci/node.js.yml`).
@@ -161,6 +161,21 @@ The engine configures specialized static analysis (SAST), infrastructure securit
 
 ---
 
+## ☁️ Table 3: Continuous Deployment & Cloud Targets Catalog (`deployments/`)
+
+The engine configures downstream, environment-guarded Continuous Deployment (CD) jobs that execute only after all CI tests pass on `main`:
+
+| Deployment Target | Starter Template | Detection Criteria | Key Official Actions | Generated CD Job ID | Environment & Guard |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AWS ECS & ECR** | `deployments/aws.yml` | `task-definition.json`, `ecs-params.yml`, `.aws/` | `aws-actions/configure-aws-credentials@v4`, `aws-actions/amazon-ecs-deploy-task-definition@v2` | `deploy-aws` | `environment: production`<br>`if: branch == main` |
+| **Google Cloud Run (GCP)** | `deployments/google-cloudrun-docker.yml` | `app.yaml`, `cloudbuild.yaml`, `cloudrun.yaml` | `google-github-actions/auth@v2`, `google-github-actions/deploy-cloudrun@v2` | `deploy-gcp` | `environment: production`<br>`if: branch == main` |
+| **Azure Web App / Container** | `deployments/azure-container-webapp.yml` | `staticwebapp.config.json`, `azure-pipelines.yml` | `azure/login@v2`, `azure/webapps-deploy@v3` | `deploy-azure` | `environment: production`<br>`if: branch == main` |
+| **Kubernetes (Helm / K8s)** | `deployments/azure-kubernetes-service-helm.yml` | `Chart.yaml`, `values.yaml`, `k8s/`, `manifests/` | `azure/setup-helm@v4.2.0`, `helm upgrade --install` | `deploy-k8s` | `environment: production`<br>`if: branch == main` |
+| **Terraform Apply (IaC)** | `deployments/terraform.yml` | `*.tf`, `*.tfvars`, `terragrunt.hcl` | `hashicorp/setup-terraform@v3`, `terraform apply` | `deploy-terraform` | `environment: production`<br>`if: branch == main` |
+| **GHCR Container Registry** | `deployments/docker-publish.yml` | `Dockerfile` detected with release policy | `docker/login-action@v3`, `docker/build-push-action@v6` | `deploy-ghcr` | `if: branch == main` |
+
+---
+
 ## 📖 Master Guide: Integrating New Tools & Starter Workflows
 
 The official GitHub [`actions/starter-workflows`](https://github.com/actions/starter-workflows) repository contains 4 distinct categories of workflows:
@@ -168,7 +183,7 @@ The official GitHub [`actions/starter-workflows`](https://github.com/actions/sta
 ```text
 actions/starter-workflows
 ├── ci/               (Continuous Integration: Java, .NET, Ruby, PHP, Rust, Go, C++, etc.)
-├── deployments/      (Continuous Deployment: AWS ECS/S3, Azure WebApp, GCP Cloud Run, GHCR, etc.)
+├── deployments/      (Continuous Deployment: AWS ECS, Azure WebApp, GCP Cloud Run, GHCR, etc.)
 ├── code-scanning/    (SAST & Security: CodeQL, Semgrep, Hadolint, Bandit, Brakeman, etc.)
 └── automation/       (Repo Automation: Release-Drafter, Stale, Labeler, Dependabot Auto-Merge, etc.)
 ```
@@ -197,270 +212,6 @@ Below is the **Universal 5-Layer Integration Protocol** to connect any workflow 
 
 ---
 
-### Detailed End-to-End Walkthroughs by Category
-
----
-
-### Category 1: Continuous Integration (CI)
-*Example: **Java with Gradle (`ci/gradle.yml`)***
-
-#### 1. `@zcicd/state`: Declare Types
-* **File:** `packages/state/src/index.ts`
-```ts
-export type Runtime = {
-  name: "node" | "python" | "go" | "rust" | "java"; // <── Add "java"
-  version?: string;
-  evidence: Evidence[];
-};
-
-export type PackageManager = {
-  name: "npm" | "pnpm" | "yarn" | "bun" | "cargo" | "pip" | "poetry" | "gomod" | "gradle" | "maven"; // <── Add "gradle"
-  evidence: Evidence[];
-};
-```
-
-#### 2. `@zcicd/scanner`: Build the Detector
-* **File:** `packages/scanner/src/detectors/gradle.ts`
-```ts
-import type { Detector, RepositoryContext } from "../detector.js";
-import type { ProjectState } from "@zcicd/state";
-
-export const gradleDetector: Detector = {
-  name: "gradle",
-  async detect(context: RepositoryContext, state: ProjectState): Promise<void> {
-    const buildFiles = context.findFiles(f => f.endsWith("build.gradle") || f.endsWith("build.gradle.kts"));
-    if (buildFiles.length > 0) {
-      state.runtime.push({
-        name: "java",
-        version: "17",
-        evidence: buildFiles.map(file => ({ source: file, value: "Gradle build file detected" }))
-      });
-      state.packageManager.push({
-        name: "gradle",
-        evidence: [{ source: "gradlew", value: "Gradle wrapper detected" }]
-      });
-    }
-  }
-};
-```
-* Register `gradleDetector` in `packages/scanner/src/index.ts`.
-
-#### 3. `@zcicd/planner`: Create Capabilities & Rules
-* **File:** `packages/planner/src/types.ts`
-```ts
-export type CapabilityId = ... | "runtime.java" | "package.gradle";
-export type ActionType = ... | "java.build" | "java.test";
-```
-* **File:** `packages/planner/src/rules/gradle.ts`
-```ts
-import type { Rule } from "../types.js";
-import { findCapability, formatEvidence, noMatch } from "./helpers.js";
-
-export const gradleRule: Rule = {
-  id: "gradle-ci",
-  description: "Build and test Java applications using Gradle.",
-  evaluate(_state, capabilities) {
-    const javaCap = findCapability(capabilities, "runtime.java");
-    const gradleCap = findCapability(capabilities, "package.gradle");
-    if (!javaCap || !gradleCap) return noMatch();
-
-    return {
-      matched: true,
-      actions: [
-        {
-          id: "gradle-setup",
-          type: "runtime.setup",
-          inputs: { runtime: "java", version: javaCap.version ?? "17" },
-          reason: "Java runtime detected.",
-          sourceRule: "gradle-ci"
-        },
-        {
-          id: "gradle-build",
-          type: "java.build",
-          inputs: { tool: "gradle" },
-          reason: "Gradle build detected.",
-          sourceRule: "gradle-ci"
-        }
-      ],
-      reasons: ["Java Gradle project detected.", ...formatEvidence(javaCap)]
-    };
-  }
-};
-```
-* Register `gradleRule` in `packages/planner/src/planner.ts`.
-
-#### 4. `@zcicd/resolver`: Ingest Template & Add Resolver
-* **File:** `packages/resolver/src/catalog/starter-workflows.ts`
-```ts
-"ci/gradle.yml": {
-  id: "ci/gradle.yml",
-  name: "Java with Gradle",
-  description: "Build a Java project with Gradle.",
-  sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/gradle.yml",
-  languages: ["java"],
-  triggers: ["push", "pull_request"],
-  steps: [
-    {
-      id: "setup-java",
-      name: "Set up JDK",
-      category: "setup",
-      kind: "uses",
-      uses: "actions/setup-java@v4",
-      with: { "java-version": "17", distribution: "temurin" }
-    },
-    {
-      id: "gradle-build",
-      name: "Build with Gradle",
-      category: "build",
-      kind: "uses",
-      uses: "gradle/actions/setup-gradle@v4",
-      with: { arguments: "build" }
-    }
-  ]
-}
-```
-* In `packages/resolver/src/resolvers/runtime.ts` and `registry.ts`, register the resolver function returning these steps.
-
-#### 5. `@zcicd/compiler`: Route into Parallel Jobs
-* In `packages/compiler/src/builder.ts`:
-```ts
-const javaSteps = resolvedPlan.primitives.filter(p => p.actionId?.startsWith("gradle-") || p.actionId?.startsWith("java-"));
-if (javaSteps.length > 0) {
-  jobs.push({
-    id: "build-java",
-    name: "Java CI (Gradle)",
-    runsOn: runner,
-    steps: [CHECKOUT_STEP, ...javaSteps]
-  });
-}
-```
-
----
-
-### Category 2: Deployments (CD)
-*Example: **Container Registry Publishing (`deployments/docker-publish.yml`)***
-
-#### 1. `@zcicd/state`: Declare Infrastructure & CD Targets
-* **File:** `packages/state/src/index.ts`
-```ts
-export type Infrastructure = {
-  name: "docker" | "kubernetes" | "terraform" | "ghcr"; // <── Add CD targets
-  evidence: Evidence[];
-};
-```
-
-#### 2. `@zcicd/scanner`: Detect Deployment Intent
-* Detects when a `Dockerfile` exists alongside container deployment triggers.
-
-#### 3. `@zcicd/planner`: Create CD Rule with Secret & Branch Conditions
-* **File:** `packages/planner/src/rules/deploy-docker.ts`
-```ts
-export const dockerPublishRule: Rule = {
-  id: "docker-publish",
-  description: "Build and publish container images to GitHub Container Registry (GHCR).",
-  evaluate(state, capabilities) {
-    const hasDocker = findCapability(capabilities, "infra.docker");
-    if (!hasDocker) return noMatch();
-
-    return {
-      matched: true,
-      actions: [
-        {
-          id: "ghcr-publish",
-          type: "docker.publish",
-          inputs: { registry: "ghcr.io", image: "${{ github.repository }}" },
-          reason: "Dockerfile detected with deployment trigger.",
-          sourceRule: "docker-publish"
-        }
-      ],
-      reasons: ["Docker infrastructure detected."]
-    };
-  }
-};
-```
-
-#### 4. `@zcicd/resolver`: Ingest Deployment Template
-* **File:** `packages/resolver/src/catalog/starter-workflows.ts`
-```ts
-"deployments/docker-publish.yml": {
-  id: "deployments/docker-publish.yml",
-  name: "Docker Image to GHCR",
-  description: "Publish Docker image to GitHub Container Registry with buildx and cosign.",
-  sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/docker-publish.yml",
-  languages: ["docker"],
-  triggers: ["push"],
-  steps: [
-    {
-      id: "login-ghcr",
-      name: "Log into registry ghcr.io",
-      category: "auth",
-      kind: "uses",
-      uses: "docker/login-action@v3",
-      with: { registry: "ghcr.io", username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
-    },
-    {
-      id: "build-push",
-      name: "Build and push Docker image",
-      category: "deploy",
-      kind: "uses",
-      uses: "docker/build-push-action@v6",
-      with: { push: true, tags: "ghcr.io/${{ github.repository }}:latest" }
-    }
-  ]
-}
-```
-
-#### 5. `@zcicd/compiler`: Attach DAG Dependencies & Permissions
-* Deploy jobs must run **only after test jobs succeed**:
-```ts
-jobs.push({
-  id: "publish-container",
-  name: "Publish Docker Image (GHCR)",
-  runsOn: "ubuntu-latest",
-  needs: testJobIds, // <── DAG Dependency: runs only after tests pass!
-  permissions: {
-    contents: "read",
-    packages: "write" // <── Injects package publishing permission
-  },
-  steps: [CHECKOUT_STEP, ...publishSteps]
-});
-```
-
----
-
-### Category 3: Code Scanning & Security
-*Example: **Hadolint Dockerfile Scanning (`code-scanning/hadolint.yml`)***
-
-#### 1. Ingest into `@zcicd/security`
-* When a `Dockerfile` is detected, `@zcicd/security` automatically resolves `hadolint` and compiles `.github/workflows/code-scanning.yml`:
-```yaml
-name: Code Scanning & Security Analyzers
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-permissions:
-  contents: read
-  security-events: write
-jobs:
-  hadolint:
-    name: Dockerfile Lint (Hadolint)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
-          format: sarif
-          output-file: hadolint.sarif
-      - uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: hadolint.sarif
-```
-
----
-
 ## 📋 Integration Checklist for New Tools
 
 Before opening a PR adding a new workflow tool, verify:
@@ -468,7 +219,7 @@ Before opening a PR adding a new workflow tool, verify:
 - [ ] **Filesystem Detector:** Deterministic crawl without false positives (handles root & subdirectories) in `@zcicd/scanner`.
 - [ ] **Capability & Rule:** Declarative capability mapping with provenance evidence in `@zcicd/planner`.
 - [ ] **Catalog Step:** Exact action source URLs and versions in `@zcicd/resolver`.
-- [ ] **DAG Routing:** Independent parallel job with proper `runs-on`, `timeout-minutes`, and `permissions` in `@zcicd/compiler`.
+- [ ] **DAG Routing:** Independent parallel job with proper `runs-on`, `timeout-minutes`, `needs`, and `permissions` in `@zcicd/compiler`.
 - [ ] **Optimization Passes:** Caching keys (`cache-dependency-path`) and production hardening configured.
 - [ ] **Unit Tests:** Added detector, planner, and compiler test cases with 100% green coverage (`pnpm -r test`).
 
@@ -485,6 +236,6 @@ Before opening a PR adding a new workflow tool, verify:
 - [x] **Phase 6:** Security Policy Compiler (Dependabot, CodeQL, Container scanning, Policy levels)
 - [x] **Phase 6B:** Universal Code Scanning Catalog (Hadolint, Bandit, Brakeman, Semgrep, tfsec, njsscan, OSV, Scorecard)
 - [x] **Phase 7:** Workflow Reconciliation + Automated GitHub PRs (Semantic AST diffing & 1-click PR links)
-- [ ] **Phase 8:** Webhooks & Continuous Adaptation (GitHub App / Webhook Daemon / Self-Healing Action)
+- [x] **Phase 8:** Continuous Deployment (CD) Catalog (AWS ECS, GCP Cloud Run, Azure WebApp, Helm K8s, Terraform, GHCR)
 - [ ] **Phase 9:** CI Observability (P50/P95 durations, failure rates, compute cost estimation)
 - [ ] **Phase 10:** Data-Driven & Change-Aware Optimization (`paths-filter` selective job execution)

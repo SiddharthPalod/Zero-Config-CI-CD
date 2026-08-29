@@ -57,6 +57,8 @@ export function compileWorkflowYAML(
     const jobDetails: Record<string, unknown> = {
       ...(job.name ? { name: job.name } : {}),
       "runs-on": job.runsOn,
+      ...(job.if ? { if: job.if } : {}),
+      ...(job.environment ? { environment: job.environment } : {}),
       ...(job.timeoutMinutes ? { "timeout-minutes": job.timeoutMinutes } : {}),
       ...(job.needs && job.needs.length > 0 ? { needs: job.needs } : {}),
       ...(job.strategy ? { strategy: job.strategy } : {}),

@@ -5,7 +5,9 @@ export type StepCategory =
   | "build"
   | "test"
   | "lint"
-  | "docker";
+  | "docker"
+  | "auth"
+  | "deploy";
 
 export type WorkflowStepPattern = {
   id: string;

@@ -531,5 +531,204 @@ export const STARTER_WORKFLOWS_CATALOG: StarterWorkflowCatalog = {
         run: "swift test -v"
       }
     ]
+  },
+
+  "deployments/aws.yml": {
+    id: "deployments/aws.yml",
+    name: "Deploy to Amazon ECS",
+    description: "Deploy container image to Amazon ECS with task definition.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/aws.yml",
+    languages: ["docker"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "aws-auth",
+        name: "Configure AWS credentials",
+        category: "auth",
+        kind: "uses",
+        uses: "aws-actions/configure-aws-credentials@v4",
+        with: {
+          "aws-access-key-id": "${{ secrets.AWS_ACCESS_KEY_ID }}",
+          "aws-secret-access-key": "${{ secrets.AWS_SECRET_ACCESS_KEY }}",
+          "aws-region": "${{ vars.AWS_REGION || 'us-east-1' }}"
+        }
+      },
+      {
+        id: "aws-ecr-login",
+        name: "Login to Amazon ECR",
+        category: "auth",
+        kind: "uses",
+        uses: "aws-actions/amazon-ecr-login@v2"
+      },
+      {
+        id: "aws-ecs-deploy",
+        name: "Deploy Amazon ECS task definition",
+        category: "deploy",
+        kind: "uses",
+        uses: "aws-actions/amazon-ecs-deploy-task-definition@v2",
+        with: {
+          "task-definition": "task-definition.json",
+          service: "${{ vars.ECS_SERVICE }}",
+          cluster: "${{ vars.ECS_CLUSTER }}",
+          "wait-for-service-stability": true
+        }
+      }
+    ]
+  },
+
+  "deployments/google-cloudrun-docker.yml": {
+    id: "deployments/google-cloudrun-docker.yml",
+    name: "Deploy to Google Cloud Run",
+    description: "Build and deploy container image to Google Cloud Run.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/google-cloudrun-docker.yml",
+    languages: ["docker"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "gcp-auth",
+        name: "Authenticate to Google Cloud",
+        category: "auth",
+        kind: "uses",
+        uses: "google-github-actions/auth@v2",
+        with: {
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+        }
+      },
+      {
+        id: "gcp-deploy",
+        name: "Deploy to Cloud Run",
+        category: "deploy",
+        kind: "uses",
+        uses: "google-github-actions/deploy-cloudrun@v2",
+        with: {
+          service: "${{ vars.K_SERVICE || 'app' }}",
+          region: "${{ vars.GCP_REGION || 'us-central1' }}",
+          source: "./"
+        }
+      }
+    ]
+  },
+
+  "deployments/azure-container-webapp.yml": {
+    id: "deployments/azure-container-webapp.yml",
+    name: "Deploy to Azure Container Web App",
+    description: "Deploy a containerized application to Azure Web Apps.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/azure-container-webapp.yml",
+    languages: ["docker"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "azure-login",
+        name: "Azure Login",
+        category: "auth",
+        kind: "uses",
+        uses: "azure/login@v2",
+        with: {
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+        }
+      },
+      {
+        id: "azure-deploy",
+        name: "Deploy to Azure Web App",
+        category: "deploy",
+        kind: "uses",
+        uses: "azure/webapps-deploy@v3",
+        with: {
+          "app-name": "${{ vars.AZURE_WEBAPP_NAME }}",
+          images: "${{ vars.DOCKER_IMAGE || 'app:latest' }}"
+        }
+      }
+    ]
+  },
+
+  "deployments/azure-kubernetes-service-helm.yml": {
+    id: "deployments/azure-kubernetes-service-helm.yml",
+    name: "Deploy to Kubernetes with Helm",
+    description: "Deploy Helm chart to Kubernetes cluster.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/azure-kubernetes-service-helm.yml",
+    languages: ["kubernetes"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "setup-helm",
+        name: "Set up Helm",
+        category: "setup",
+        kind: "uses",
+        uses: "azure/setup-helm@v4.2.0"
+      },
+      {
+        id: "k8s-deploy",
+        name: "Deploy to Kubernetes",
+        category: "deploy",
+        kind: "run",
+        run: "helm upgrade --install release . --wait"
+      }
+    ]
+  },
+
+  "deployments/terraform.yml": {
+    id: "deployments/terraform.yml",
+    name: "Terraform CD",
+    description: "Plan and apply Terraform infrastructure.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/terraform.yml",
+    languages: ["terraform"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "setup-terraform",
+        name: "Setup Terraform",
+        category: "setup",
+        kind: "uses",
+        uses: "hashicorp/setup-terraform@v3"
+      },
+      {
+        id: "terraform-init",
+        name: "Terraform Init",
+        category: "deploy",
+        kind: "run",
+        run: "terraform init"
+      },
+      {
+        id: "terraform-apply",
+        name: "Terraform Apply",
+        category: "deploy",
+        kind: "run",
+        run: "terraform apply -auto-approve"
+      }
+    ]
+  },
+
+  "deployments/docker-publish.yml": {
+    id: "deployments/docker-publish.yml",
+    name: "Publish to GHCR",
+    description: "Publish Docker image to GitHub Container Registry.",
+    sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/docker-publish.yml",
+    languages: ["docker"],
+    triggers: ["push"],
+    steps: [
+      {
+        id: "ghcr-login",
+        name: "Log into registry ghcr.io",
+        category: "auth",
+        kind: "uses",
+        uses: "docker/login-action@v3",
+        with: {
+          registry: "ghcr.io",
+          username: "${{ github.actor }}",
+          password: "${{ secrets.GITHUB_TOKEN }}"
+        }
+      },
+      {
+        id: "ghcr-push",
+        name: "Build and push Docker image",
+        category: "deploy",
+        kind: "uses",
+        uses: "docker/build-push-action@v6",
+        with: {
+          push: true,
+          tags: "ghcr.io/${{ github.repository }}:latest"
+        }
+      }
+    ]
   }
 };
