@@ -1,21 +1,40 @@
-import type {
-  ProjectState
-} from "@zcicd/state";
+import type { ProjectState } from "@zcicd/state";
 
 export type CapabilityId =
   | "runtime.node"
   | "runtime.python"
   | "runtime.go"
+  | "runtime.rust"
+  | "runtime.java"
+  | "runtime.dotnet"
+  | "runtime.ruby"
+  | "runtime.php"
+  | "runtime.dart"
+  | "runtime.elixir"
+  | "runtime.cpp"
+  | "runtime.deno"
+  | "runtime.swift"
 
   | "package.npm"
   | "package.pnpm"
   | "package.yarn"
   | "package.bun"
+  | "package.cargo"
+  | "package.maven"
+  | "package.gradle"
+  | "package.nuget"
+  | "package.bundler"
+  | "package.composer"
+  | "package.pub"
+  | "package.mix"
 
   | "framework.react"
   | "framework.next"
   | "framework.express"
   | "framework.nestjs"
+  | "framework.rails"
+  | "framework.laravel"
+  | "framework.symfony"
 
   | "test.jest"
   | "test.vitest"
@@ -25,9 +44,6 @@ export type CapabilityId =
   | "tool.typescript"
   | "tool.eslint"
   | "tool.prettier"
-
-  | "runtime.node"
-  | "runtime.rust"     
 
   | "infra.docker"
   | "infra.docker-compose";
@@ -52,37 +68,40 @@ export type ActionType =
   | "go.build"
   | "go.test"
   | "python.test"
-  | "rust.build"      
+  | "rust.build"
   | "rust.test"
+  | "java.build"
+  | "java.test"
+  | "dotnet.build"
+  | "dotnet.test"
+  | "ruby.test"
+  | "php.test"
+  | "dart.test"
+  | "elixir.test"
+  | "cpp.build"
+  | "cpp.test"
+  | "deno.test"
+  | "swift.build"
+  | "swift.test"
   | "docker.build";
 
 export type PlannedAction = {
   id: string;
   type: ActionType;
-
-  inputs?: Record<
-    string,
-    string | number | boolean
-  >;
-
+  inputs?: Record<string, string | number | boolean>;
   reason: string;
-
   sourceRule: string;
 };
 
 export type RuleResult = {
   matched: boolean;
-
   actions: PlannedAction[];
-
   reasons: string[];
 };
 
 export type Rule = {
   id: string;
-
   description: string;
-
   evaluate(
     state: ProjectState,
     capabilities: ResolvedCapability[]
@@ -91,10 +110,7 @@ export type Rule = {
 
 export type WorkflowPlan = {
   capabilities: ResolvedCapability[];
-
   actions: PlannedAction[];
-
   matchedRules: string[];
-
   diagnostics: string[];
 };

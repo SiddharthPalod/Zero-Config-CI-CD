@@ -36,6 +36,7 @@ describe("Phase 7 - GitHub PR Automation", () => {
       dependabot: { enabled: true, ecosystems: [{ packageEcosystem: "cargo", directory: "/", interval: "weekly" }] },
       nativeAudits: [{ tool: "cargo-audit", command: "cargo audit", failOnError: false }],
       codeql: { enabled: false, languages: [] },
+      codeScanning: { enabled: false, scanners: [] },
       containerScanning: { enabled: false, dockerfiles: [], severityThreshold: "CRITICAL", uploadSarif: false },
       secretScanning: { enabled: false, tool: "gitleaks" },
       enforcement: { blockOnVulnerabilities: false }

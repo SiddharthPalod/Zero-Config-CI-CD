@@ -6,7 +6,19 @@ import {
   resolveGoTest,
   resolvePythonTest,
   resolveRustBuild,
-  resolveRustTest
+  resolveRustTest,
+  resolveJavaBuild,
+  resolveDotnetBuild,
+  resolveDotnetTest,
+  resolveRubyTest,
+  resolvePhpTest,
+  resolveDartTest,
+  resolveElixirTest,
+  resolveCppBuild,
+  resolveCppTest,
+  resolveDenoTest,
+  resolveSwiftBuild,
+  resolveSwiftTest
 } from "./resolvers/runtime.js";
 import { resolveDependencyInstall } from "./resolvers/dependencies.js";
 import { resolveDockerBuild } from "./resolvers/docker.js";
@@ -24,5 +36,18 @@ export const resolverRegistry: Record<string, ResolverFunction> = {
   "go.test": resolveGoTest,
   "python.test": resolvePythonTest,
   "rust.build": resolveRustBuild,
-  "rust.test": resolveRustTest
+  "rust.test": resolveRustTest,
+  "java.build": resolveJavaBuild,
+  "java.test": resolveJavaBuild,
+  "dotnet.build": resolveDotnetBuild,
+  "dotnet.test": resolveDotnetTest,
+  "ruby.test": resolveRubyTest,
+  "php.test": resolvePhpTest,
+  "dart.test": resolveDartTest,
+  "elixir.test": resolveElixirTest,
+  "cpp.build": resolveCppBuild,
+  "cpp.test": resolveCppTest,
+  "deno.test": resolveDenoTest,
+  "swift.build": resolveSwiftBuild,
+  "swift.test": resolveSwiftTest
 };

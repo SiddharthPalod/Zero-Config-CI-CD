@@ -5,7 +5,8 @@ import type {
   DependabotTarget,
   DependabotEcosystem,
   CodeQLLanguage,
-  NativeAuditConfig
+  NativeAuditConfig,
+  CodeScanningTargetConfig
 } from "./types.js";
 
 function getDir(sourcePath: string): string {
@@ -26,6 +27,7 @@ export function resolveSecurityPolicy(
       dependabot: { enabled: false, ecosystems: [] },
       nativeAudits: [],
       codeql: { enabled: false, languages: [] },
+      codeScanning: { enabled: false, scanners: [] },
       containerScanning: { enabled: false, dockerfiles: [], severityThreshold: "CRITICAL", uploadSarif: false },
       secretScanning: { enabled: false, tool: "gitleaks" },
       enforcement: { blockOnVulnerabilities: false }
@@ -62,6 +64,20 @@ export function resolveSecurityPolicy(
         addTarget("pip", dir);
       } else if (pm.name === "gomod") {
         addTarget("gomod", dir);
+      } else if (pm.name === "maven") {
+        addTarget("maven", dir);
+      } else if (pm.name === "gradle") {
+        addTarget("gradle", dir);
+      } else if (pm.name === "nuget") {
+        addTarget("nuget", dir);
+      } else if (pm.name === "bundler") {
+        addTarget("bundler", dir);
+      } else if (pm.name === "composer") {
+        addTarget("composer", dir);
+      } else if (pm.name === "pub") {
+        addTarget("pub", dir);
+      } else if (pm.name === "mix") {
+        addTarget("mix", dir);
       }
     }
   }
@@ -79,6 +95,20 @@ export function resolveSecurityPolicy(
         addTarget("pip", dir);
       } else if (lower.endsWith("go.mod")) {
         addTarget("gomod", dir);
+      } else if (lower.endsWith("pom.xml")) {
+        addTarget("maven", dir);
+      } else if (lower.endsWith("build.gradle") || lower.endsWith("build.gradle.kts")) {
+        addTarget("gradle", dir);
+      } else if (lower.endsWith(".csproj") || lower.endsWith(".sln")) {
+        addTarget("nuget", dir);
+      } else if (lower.endsWith("gemfile")) {
+        addTarget("bundler", dir);
+      } else if (lower.endsWith("composer.json")) {
+        addTarget("composer", dir);
+      } else if (lower.endsWith("pubspec.yaml")) {
+        addTarget("pub", dir);
+      } else if (lower.endsWith("mix.exs")) {
+        addTarget("mix", dir);
       }
     }
   }
@@ -146,13 +176,88 @@ export function resolveSecurityPolicy(
     if (runtimes.includes("node")) codeqlLanguages.push("javascript-typescript");
     if (runtimes.includes("python")) codeqlLanguages.push("python");
     if (runtimes.includes("go")) codeqlLanguages.push("go");
+    if (runtimes.includes("java")) codeqlLanguages.push("java-kotlin");
+    if (runtimes.includes("dotnet")) codeqlLanguages.push("csharp");
+    if (runtimes.includes("ruby")) codeqlLanguages.push("ruby");
+    if (runtimes.includes("cpp")) codeqlLanguages.push("c-cpp");
+    if (runtimes.includes("swift")) codeqlLanguages.push("swift");
   }
 
-  // 4. Resolve Container Scanning
+  // 4. Resolve Specialized Code Scanning Tools
+  const scanners: CodeScanningTargetConfig[] = [];
+  if (level === "standard" || level === "strict") {
+    // Dockerfile linting
+    if (dockerfiles.length > 0) {
+      scanners.push({
+        tool: "hadolint",
+        targetPath: dockerfiles[0],
+        failOnError: blockOnVulnerabilities,
+        uploadSarif: true
+      });
+    }
+
+    // Python Security Linter (Bandit)
+    if (runtimes.includes("python")) {
+      scanners.push({
+        tool: "bandit",
+        failOnError: blockOnVulnerabilities,
+        uploadSarif: false
+      });
+    }
+
+    // Ruby / Rails (Brakeman)
+    if (runtimes.includes("ruby") || state.frameworks.some(f => f.name === "rails")) {
+      scanners.push({
+        tool: "brakeman",
+        failOnError: blockOnVulnerabilities,
+        uploadSarif: true
+      });
+    }
+
+    // Node.js (njsscan)
+    if (runtimes.includes("node")) {
+      scanners.push({
+        tool: "njsscan",
+        failOnError: blockOnVulnerabilities,
+        uploadSarif: true
+      });
+    }
+
+    // PR Dependency Review
+    scanners.push({
+      tool: "dependency-review",
+      failOnError: blockOnVulnerabilities,
+      uploadSarif: false
+    });
+
+    // OSV-Scanner for open-source CVEs
+    scanners.push({
+      tool: "osv-scanner",
+      failOnError: blockOnVulnerabilities,
+      uploadSarif: true
+    });
+  }
+
+  // Strict Mode: Add Universal SAST (Semgrep) and Supply Chain (Scorecard)
+  if (level === "strict") {
+    scanners.push({
+      tool: "semgrep",
+      failOnError: blockOnVulnerabilities,
+      uploadSarif: true
+    });
+
+    scanners.push({
+      tool: "scorecard",
+      failOnError: false, // Scorecard reports supply chain posture without failing builds
+      uploadSarif: true
+    });
+  }
+
+  // 5. Resolve Container Scanning
   const enableContainerScanning = (level === "standard" || level === "strict") && dockerfiles.length > 0;
   const severityThreshold = level === "strict" ? "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" : "HIGH,CRITICAL";
 
-  // 5. Resolve Secret Scanning (Strict level only)
+  // 6. Resolve Secret Scanning (Strict level only)
   const enableSecretScanning = level === "strict";
 
   return {
@@ -165,7 +270,11 @@ export function resolveSecurityPolicy(
     codeql: {
       enabled: codeqlLanguages.length > 0,
       languages: codeqlLanguages,
-      scheduleCron: level === "strict" ? "0 0 * * 1,4" : "0 0 * * 1" // Mon & Thu for strict, Mon for standard
+      scheduleCron: level === "strict" ? "0 0 * * 1,4" : "0 0 * * 1"
+    },
+    codeScanning: {
+      enabled: scanners.length > 0,
+      scanners
     },
     containerScanning: {
       enabled: enableContainerScanning,

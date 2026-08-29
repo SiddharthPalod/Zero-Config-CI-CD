@@ -58,6 +58,125 @@ export function resolveRuntimeSetup(action: PlannedAction): ResolvedPrimitive[] 
       ];
     }
 
+    case "java": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/maven.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-java");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "actions/setup-java@v4",
+          with: {
+            "java-version": resolvedVersion ?? "17",
+            distribution: "temurin"
+          },
+          reason: "Java JDK runtime setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "dotnet": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/dotnet.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-dotnet");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "actions/setup-dotnet@v4",
+          with: {
+            "dotnet-version": resolvedVersion ?? "8.0.x"
+          },
+          reason: ".NET SDK setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "ruby": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/ruby.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-ruby");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "ruby/setup-ruby@v1",
+          with: {
+            "ruby-version": resolvedVersion ?? "3.2",
+            "bundler-cache": true
+          },
+          reason: "Ruby setup with Bundler cache from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "php": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/php.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-php");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "shivammathur/setup-php@v2",
+          with: {
+            "php-version": resolvedVersion ?? "8.2"
+          },
+          reason: "PHP runtime setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "dart": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/dart.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-dart");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "dart-lang/setup-dart@v1",
+          reason: "Dart SDK setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "elixir": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/elixir.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-beam");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "erlef/setup-beam@v1",
+          with: {
+            "elixir-version": resolvedVersion ?? "1.15",
+            "otp-version": "26.0"
+          },
+          reason: "Erlang/Elixir BEAM setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
+    case "deno": {
+      const template = STARTER_WORKFLOWS_CATALOG["ci/deno.yml"];
+      const setupStep = template.steps.find(s => s.id === "setup-deno");
+      return [
+        {
+          kind: "uses",
+          uses: setupStep?.uses ?? "denoland/setup-deno@v2",
+          with: {
+            "deno-version": resolvedVersion ?? "v1.x"
+          },
+          reason: "Deno setup from starter workflow.",
+          source: `actions/starter-workflows:${template.id}`,
+          actionId: action.id
+        }
+      ];
+    }
+
     default:
       throw new Error(`Unsupported runtime: ${runtime}`);
   }
@@ -158,6 +277,184 @@ export function resolveRustTest(action: PlannedAction): ResolvedPrimitive[] {
       kind: "run",
       run: testStep?.run ?? "cargo test --verbose",
       reason: "Run Rust tests according to starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveJavaBuild(action: PlannedAction): ResolvedPrimitive[] {
+  const isGradle = action.inputs?.tool === "gradle";
+  const templateId = isGradle ? "ci/gradle.yml" : "ci/maven.yml";
+  const template = STARTER_WORKFLOWS_CATALOG[templateId];
+
+  if (isGradle) {
+    return [
+      {
+        kind: "uses",
+        uses: "gradle/actions/setup-gradle@v4",
+        reason: "Setup Gradle build tool from starter workflow.",
+        source: `actions/starter-workflows:${template.id}`,
+        actionId: action.id
+      },
+      {
+        kind: "run",
+        run: "./gradlew build",
+        reason: "Execute Gradle build and tests.",
+        source: `actions/starter-workflows:${template.id}`,
+        actionId: action.id
+      }
+    ];
+  }
+
+  return [
+    {
+      kind: "run",
+      run: "mvn -B package --file pom.xml",
+      reason: "Execute Maven build and tests.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveDotnetBuild(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/dotnet.yml"];
+  return [
+    {
+      kind: "run",
+      run: "dotnet restore && dotnet build --no-restore",
+      reason: "Restore and build .NET solution from starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveDotnetTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/dotnet.yml"];
+  return [
+    {
+      kind: "run",
+      run: "dotnet test --no-build --verbosity normal",
+      reason: "Run .NET unit tests from starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveRubyTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/ruby.yml"];
+  return [
+    {
+      kind: "run",
+      run: "bundle exec rake || bundle exec rspec",
+      reason: "Run Ruby test suite from starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolvePhpTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/php.yml"];
+  return [
+    {
+      kind: "run",
+      run: "composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist && (vendor/bin/phpunit || [ $? -eq 0 ])",
+      reason: "Install Composer packages and run PHPUnit tests.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveDartTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/dart.yml"];
+  return [
+    {
+      kind: "run",
+      run: "dart pub get && dart test",
+      reason: "Install dependencies and execute Dart tests.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveElixirTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/elixir.yml"];
+  return [
+    {
+      kind: "run",
+      run: "mix deps.get && mix test",
+      reason: "Install Mix dependencies and execute tests.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveCppBuild(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/cmake-single-platform.yml"];
+  return [
+    {
+      kind: "run",
+      run: "cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release",
+      reason: "Configure and compile C/C++ CMake project.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveCppTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/cmake-single-platform.yml"];
+  return [
+    {
+      kind: "run",
+      run: "ctest --test-dir build --output-on-failure -C Release",
+      reason: "Execute CTest test suite.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveDenoTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/deno.yml"];
+  return [
+    {
+      kind: "run",
+      run: "deno test",
+      reason: "Run Deno tests.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveSwiftBuild(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/swift.yml"];
+  return [
+    {
+      kind: "run",
+      run: "swift build -v",
+      reason: "Compile Swift packages from starter workflow.",
+      source: `actions/starter-workflows:${template.id}`,
+      actionId: action.id
+    }
+  ];
+}
+
+export function resolveSwiftTest(action: PlannedAction): ResolvedPrimitive[] {
+  const template = STARTER_WORKFLOWS_CATALOG["ci/swift.yml"];
+  return [
+    {
+      kind: "run",
+      run: "swift test -v",
+      reason: "Execute Swift unit tests from starter workflow.",
       source: `actions/starter-workflows:${template.id}`,
       actionId: action.id
     }

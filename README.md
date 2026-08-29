@@ -1,6 +1,6 @@
 # Zero-Config CI/CD Engine
 
-A deterministic policy compiler that inspects codebases, deduces capabilities, resolves official GitHub Actions patterns from a curated knowledge catalog, compiles type-safe, multi-job CI/CD workflows, and automatically orchestrates security policies and GitHub Pull Requests with zero manual configuration.
+A deterministic policy compiler that inspects codebases, deduces capabilities, resolves official GitHub Actions patterns from a curated knowledge catalog, compiles type-safe, multi-job CI/CD workflows, and automatically orchestrates security policies, code scanning, and GitHub Pull Requests with zero manual configuration.
 
 ---
 
@@ -21,7 +21,7 @@ Repository / Remote Git URL
 │  2. Workflow Planner    │  (Policy rules engine: Facts ──► Capabilities)
 └────────────┬────────────┘
              ▼
-    Workflow Requirements    (Planned Actions)
+    Workflow Requirements    (Planned Actions across CI, CD, Security, Automation)
              │
              ▼
 ┌─────────────────────────┐
@@ -44,7 +44,7 @@ Repository / Remote Git URL
              │
              ▼
 ┌─────────────────────────┐
-│  6. Security Compiler   │  (Dependabot, Multi-language CodeQL SAST, Native Audits, Trivy)
+│  6. Security Compiler   │  (Dependabot, CodeQL, Code Scanning SAST, Native Audits, Trivy)
 └────────────┬────────────┘
              │
              ▼
@@ -54,6 +54,7 @@ Repository / Remote Git URL
              ▼
 .github/workflows/ci.yml
 .github/workflows/codeql.yml
+.github/workflows/code-scanning.yml
 .github/workflows/security.yml
 .github/dependabot.yml
 ```
@@ -64,13 +65,13 @@ Repository / Remote Git URL
 
 | Package | Role | Description |
 | :--- | :--- | :--- |
-| **`@zcicd/state`** | Data Contracts | Pure TypeScript interfaces representing discovered project facts and provenance evidence. |
-| **`@zcicd/scanner`** | Phase 1 Engine | High-performance filesystem crawler and deterministic detectors for Node, Python, Go, Rust, Docker. |
+| **`@zcicd/state`** | Data Contracts | Pure TypeScript interfaces representing discovered project facts, infrastructure markers, and evidence. |
+| **`@zcicd/scanner`** | Phase 1 Engine | High-performance filesystem crawler and deterministic detectors for Node, Python, Go, Rust, Docker, Java, etc. |
 | **`@zcicd/planner`** | Phase 2 Engine | Capability vocabulary normalizer and declarative rule evaluation engine. |
 | **`@zcicd/resolver`** | Phase 3 Engine | Knowledge catalog containing normalized GitHub Starter Workflows with provenance tracking. |
 | **`@zcicd/workflow-ir`** | Phase 4 AST | Strongly-typed Workflow Intermediate Representation (Jobs, DAG `needs`, Matrices, Triggers, Steps). |
 | **`@zcicd/compiler`** | Phase 4/5 Compiler | Workflow Builder, DAG Cycle Validator, and deterministic YAML emitter with optimization passes. |
-| **`@zcicd/security`** | Phase 6 Engine | Security Policy IR & Multi-artifact Security Compiler (Dependabot, CodeQL, Trivy, Audits). |
+| **`@zcicd/security`** | Phase 6 Engine | Security Policy IR & Multi-artifact Security Compiler (Dependabot, CodeQL, Code Scanning, Trivy, Audits). |
 | **`@zcicd/reconciliation`** | Phase 7 Engine | Semantic AST diffing & non-destructive merging with existing `.github/workflows`. |
 | **`@zcicd/github`** | Phase 7 Automation | Native Git branch management and GitHub Pull Request automation. |
 | **`@zcicd/cli`** | Developer CLI | Terminal runner with interactive live progress (Wizard v2), minimalist mode (v1), and `--inspect`. |
@@ -113,16 +114,363 @@ pnpm -r test
 
 ---
 
-## 🛡️ Security Policies Matrix (Phase 6)
+## 🛠️ Table 1: Supported CI/CD Ecosystems Catalog (`ci/`)
 
-| Feature | Minimal | Standard (Recommended) | Strict |
-| :--- | :---: | :---: | :---: |
-| **Dependabot Updates** | Weekly | Weekly (All sub-ecosystems) | Daily |
-| **CodeQL SAST Scanning** | — | JS/TS, Python, Go Matrix | JS/TS, Python, Go Matrix |
-| **Native Dependency Audits** | `npm audit`, `pip-audit`, `cargo-audit`, `govulncheck` (non-blocking) | `npm audit`, `pip-audit`, `cargo-audit`, `govulncheck` (report mode) | Zero-Tolerance Gating (Blocks on CVEs) |
-| **Container Scanning** | — | Trivy Image Scanning (High/Critical) | Trivy + SARIF Upload to GitHub Security |
-| **Runner Hardening** | — | — | StepSecurity `harden-runner` |
-| **Secret Scanning** | — | — | Gitleaks Action |
+The engine automatically discovers project manifests across root and subdirectories and provisions official GitHub Actions templates:
+
+| Ecosystem / Language | Starter Template | Detected Manifests & Files | Actions & Resolvers | Generated Job ID | Automatic Caching |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Node.js / TypeScript** | `ci/node.js.yml` | `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` | `actions/setup-node@v4`, `pnpm/action-setup@v4` | `test-node` | `cache-dependency-path` (npm, pnpm, yarn) |
+| **Python** | `ci/python-app.yml` | `requirements.txt`, `pyproject.toml`, `Pipfile` | `actions/setup-python@v5`, `pytest` | `test-python` | `pip` dependency caching |
+| **Go** | `ci/go.yml` | `go.mod`, `go.sum` | `actions/setup-go@v5` | `test-go` | Go module caching |
+| **Rust** | `ci/rust.yml` | `Cargo.toml`, `Cargo.lock` | Cargo build & test | `test-rust` | Cargo registry cache |
+| **Java (Maven)** | `ci/maven.yml` | `pom.xml` | `actions/setup-java@v4` (`temurin`) | `test-java` | `~/.m2/repository` cache |
+| **Java/Kotlin (Gradle)** | `ci/gradle.yml` | `build.gradle`, `build.gradle.kts`, `gradlew` | `actions/setup-java@v4` + `gradle/actions/setup-gradle@v4` | `test-java` | Native Gradle cache |
+| **.NET / C# / F#** | `ci/dotnet.yml` | `*.csproj`, `*.fsproj`, `*.sln` | `actions/setup-dotnet@v4` | `test-dotnet` | NuGet package cache |
+| **Ruby & Rails** | `ci/ruby.yml`, `ci/rubyonrails.yml` | `Gemfile`, `Gemfile.lock`, `*.gemspec` | `ruby/setup-ruby@v1` | `test-ruby` | Bundler cache (`bundler-cache: true`) |
+| **PHP (Composer / Laravel)** | `ci/php.yml`, `ci/laravel.yml` | `composer.json`, `composer.lock`, `artisan` | `shivammathur/setup-php@v2` | `test-php` | Composer cache |
+| **Dart & Flutter** | `ci/dart.yml` | `pubspec.yaml`, `pubspec.lock` | `dart-lang/setup-dart@v1` | `test-dart` | `~/.pub-cache` |
+| **Elixir & Erlang** | `ci/elixir.yml` | `mix.exs`, `mix.lock` | `erlef/setup-beam@v1` | `test-elixir` | `_build` & `deps` cache |
+| **C / C++ (CMake)** | `ci/cmake-single-platform.yml` | `CMakeLists.txt`, `Makefile` | CMake Build & CTest | `test-cpp` | Compiler cache |
+| **Deno** | `ci/deno.yml` | `deno.json`, `deno.jsonc`, `deno.lock` | `denoland/setup-deno@v2` | `test-deno` | Deno cache |
+| **Swift** | `ci/swift.yml` | `Package.swift` | Swift Package Manager | `test-swift` | SPM build cache |
+| **Docker Containers** | `ci/docker-image.yml` | `Dockerfile`, `docker-compose.yml` | `docker/setup-buildx-action@v3` | `build-docker` | Buildx layer caching |
+
+---
+
+## 🛡️ Table 2: Code Scanning & Security Scanners Matrix (`code-scanning/`)
+
+The engine configures specialized static analysis (SAST), infrastructure security (IaC), and supply chain tools into `.github/workflows/code-scanning.yml`:
+
+| Scanner Tool | Domain / Target | Detection Trigger | Official Action / Step | Minimum Policy Level | Output & Reporting |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **CodeQL Deep SAST** | Multi-Language SAST | JS/TS, Python, Go, Java, C#, Ruby, C++, Swift | `github/codeql-action/analyze@v3` | **Standard** | SARIF $\rightarrow$ GitHub Security Tab |
+| **Semgrep SAST** | Universal SAST | Any codebase | `returntocorp/semgrep-action@v1` | **Strict** | `semgrep.sarif` $\rightarrow$ Security Tab |
+| **Hadolint** | Dockerfile Lint & Security | `Dockerfile` detected | `hadolint/hadolint-action@v3.1.0` | **Standard** | `hadolint.sarif` $\rightarrow$ Security Tab |
+| **tfsec** | Terraform IaC Security | `*.tf` files detected | `aquasecurity/tfsec-action@v1.0.3` | **Standard** | `tfsec.sarif` $\rightarrow$ Security Tab |
+| **Bandit** | Python Security Linter | Python detected | `PyCQA/bandit` | **Standard** | Security annotations in Actions log |
+| **Brakeman** | Ruby on Rails SAST | Ruby / Rails detected | `brakeman/brakeman-action@v1` | **Standard** | `brakeman.sarif` $\rightarrow$ Security Tab |
+| **njsscan** | Node.js Security SAST | Node.js detected | `ajinabraham/njsscan-action@master` | **Standard** | `njsscan.sarif` $\rightarrow$ Security Tab |
+| **Dependency Review** | PR Dependency Gating | Any repo on PR | `actions/dependency-review-action@v4` | **Standard** | PR comment + High/Critical blocker |
+| **Google OSV-Scanner** | Open Source Vulnerabilities | Lockfiles detected | `google/osv-scanner-action@v1.9.0` | **Standard** | `osv-results.sarif` $\rightarrow$ Security Tab |
+| **OpenSSF Scorecard** | Supply Chain Assurance | Public / Enterprise repo | `ossf/scorecard-action@v2.4.0` | **Strict** | `scorecard.sarif` $\rightarrow$ Security Tab |
+| **Trivy Image Scan** | Container Vulnerabilities | `Dockerfile` detected | `aquasecurity/trivy-action@master` | **Standard** | Table summary / SARIF upload |
+| **Native Audits** | Lockfile CVE Audits | npm, pip, cargo, go | `npm audit`, `pip-audit`, `cargo-audit`, `govulncheck` | **Minimal** | Console logs / Blocking in Strict |
+| **Harden-Runner** | Network & Egress Security | All CI/CD jobs | `step-security/harden-runner@v2` | **Strict** | StepSecurity Insights Dashboard |
+| **Gitleaks** | Secret & Key Leak Detection | Git history | `gitleaks/gitleaks-action@v2` | **Strict** | Blocks PR on secret detection |
+
+---
+
+## 📖 Master Guide: Integrating New Tools & Starter Workflows
+
+The official GitHub [`actions/starter-workflows`](https://github.com/actions/starter-workflows) repository contains 4 distinct categories of workflows:
+
+```text
+actions/starter-workflows
+├── ci/               (Continuous Integration: Java, .NET, Ruby, PHP, Rust, Go, C++, etc.)
+├── deployments/      (Continuous Deployment: AWS ECS/S3, Azure WebApp, GCP Cloud Run, GHCR, etc.)
+├── code-scanning/    (SAST & Security: CodeQL, Semgrep, Hadolint, Bandit, Brakeman, etc.)
+└── automation/       (Repo Automation: Release-Drafter, Stale, Labeler, Dependabot Auto-Merge, etc.)
+```
+
+Below is the **Universal 5-Layer Integration Protocol** to connect any workflow template from `actions/starter-workflows` into the Zero-Config CI/CD Engine.
+
+---
+
+### The Universal 5-Layer Integration Protocol
+
+```text
+1. State Layer       Define new runtime/framework/infrastructure types & evidence models in @zcicd/state
+        │
+        ▼
+2. Scanner Layer     Implement filesystem detectors in @zcicd/scanner to discover manifests & file markers
+        │
+        ▼
+3. Planner Layer     Declare capability IDs and policy rules in @zcicd/planner to deduce actions from facts
+        │
+        ▼
+4. Resolver Layer    Ingest template into catalog in @zcicd/resolver and map actions to concrete steps
+        │
+        ▼
+5. Compiler Layer    Partition primitives into parallel DAG jobs, inject caching/hardening in @zcicd/compiler
+```
+
+---
+
+### Detailed End-to-End Walkthroughs by Category
+
+---
+
+### Category 1: Continuous Integration (CI)
+*Example: **Java with Gradle (`ci/gradle.yml`)***
+
+#### 1. `@zcicd/state`: Declare Types
+* **File:** `packages/state/src/index.ts`
+```ts
+export type Runtime = {
+  name: "node" | "python" | "go" | "rust" | "java"; // <── Add "java"
+  version?: string;
+  evidence: Evidence[];
+};
+
+export type PackageManager = {
+  name: "npm" | "pnpm" | "yarn" | "bun" | "cargo" | "pip" | "poetry" | "gomod" | "gradle" | "maven"; // <── Add "gradle"
+  evidence: Evidence[];
+};
+```
+
+#### 2. `@zcicd/scanner`: Build the Detector
+* **File:** `packages/scanner/src/detectors/gradle.ts`
+```ts
+import type { Detector, RepositoryContext } from "../detector.js";
+import type { ProjectState } from "@zcicd/state";
+
+export const gradleDetector: Detector = {
+  name: "gradle",
+  async detect(context: RepositoryContext, state: ProjectState): Promise<void> {
+    const buildFiles = context.findFiles(f => f.endsWith("build.gradle") || f.endsWith("build.gradle.kts"));
+    if (buildFiles.length > 0) {
+      state.runtime.push({
+        name: "java",
+        version: "17",
+        evidence: buildFiles.map(file => ({ source: file, value: "Gradle build file detected" }))
+      });
+      state.packageManager.push({
+        name: "gradle",
+        evidence: [{ source: "gradlew", value: "Gradle wrapper detected" }]
+      });
+    }
+  }
+};
+```
+* Register `gradleDetector` in `packages/scanner/src/index.ts`.
+
+#### 3. `@zcicd/planner`: Create Capabilities & Rules
+* **File:** `packages/planner/src/types.ts`
+```ts
+export type CapabilityId = ... | "runtime.java" | "package.gradle";
+export type ActionType = ... | "java.build" | "java.test";
+```
+* **File:** `packages/planner/src/rules/gradle.ts`
+```ts
+import type { Rule } from "../types.js";
+import { findCapability, formatEvidence, noMatch } from "./helpers.js";
+
+export const gradleRule: Rule = {
+  id: "gradle-ci",
+  description: "Build and test Java applications using Gradle.",
+  evaluate(_state, capabilities) {
+    const javaCap = findCapability(capabilities, "runtime.java");
+    const gradleCap = findCapability(capabilities, "package.gradle");
+    if (!javaCap || !gradleCap) return noMatch();
+
+    return {
+      matched: true,
+      actions: [
+        {
+          id: "gradle-setup",
+          type: "runtime.setup",
+          inputs: { runtime: "java", version: javaCap.version ?? "17" },
+          reason: "Java runtime detected.",
+          sourceRule: "gradle-ci"
+        },
+        {
+          id: "gradle-build",
+          type: "java.build",
+          inputs: { tool: "gradle" },
+          reason: "Gradle build detected.",
+          sourceRule: "gradle-ci"
+        }
+      ],
+      reasons: ["Java Gradle project detected.", ...formatEvidence(javaCap)]
+    };
+  }
+};
+```
+* Register `gradleRule` in `packages/planner/src/planner.ts`.
+
+#### 4. `@zcicd/resolver`: Ingest Template & Add Resolver
+* **File:** `packages/resolver/src/catalog/starter-workflows.ts`
+```ts
+"ci/gradle.yml": {
+  id: "ci/gradle.yml",
+  name: "Java with Gradle",
+  description: "Build a Java project with Gradle.",
+  sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/gradle.yml",
+  languages: ["java"],
+  triggers: ["push", "pull_request"],
+  steps: [
+    {
+      id: "setup-java",
+      name: "Set up JDK",
+      category: "setup",
+      kind: "uses",
+      uses: "actions/setup-java@v4",
+      with: { "java-version": "17", distribution: "temurin" }
+    },
+    {
+      id: "gradle-build",
+      name: "Build with Gradle",
+      category: "build",
+      kind: "uses",
+      uses: "gradle/actions/setup-gradle@v4",
+      with: { arguments: "build" }
+    }
+  ]
+}
+```
+* In `packages/resolver/src/resolvers/runtime.ts` and `registry.ts`, register the resolver function returning these steps.
+
+#### 5. `@zcicd/compiler`: Route into Parallel Jobs
+* In `packages/compiler/src/builder.ts`:
+```ts
+const javaSteps = resolvedPlan.primitives.filter(p => p.actionId?.startsWith("gradle-") || p.actionId?.startsWith("java-"));
+if (javaSteps.length > 0) {
+  jobs.push({
+    id: "build-java",
+    name: "Java CI (Gradle)",
+    runsOn: runner,
+    steps: [CHECKOUT_STEP, ...javaSteps]
+  });
+}
+```
+
+---
+
+### Category 2: Deployments (CD)
+*Example: **Container Registry Publishing (`deployments/docker-publish.yml`)***
+
+#### 1. `@zcicd/state`: Declare Infrastructure & CD Targets
+* **File:** `packages/state/src/index.ts`
+```ts
+export type Infrastructure = {
+  name: "docker" | "kubernetes" | "terraform" | "ghcr"; // <── Add CD targets
+  evidence: Evidence[];
+};
+```
+
+#### 2. `@zcicd/scanner`: Detect Deployment Intent
+* Detects when a `Dockerfile` exists alongside container deployment triggers.
+
+#### 3. `@zcicd/planner`: Create CD Rule with Secret & Branch Conditions
+* **File:** `packages/planner/src/rules/deploy-docker.ts`
+```ts
+export const dockerPublishRule: Rule = {
+  id: "docker-publish",
+  description: "Build and publish container images to GitHub Container Registry (GHCR).",
+  evaluate(state, capabilities) {
+    const hasDocker = findCapability(capabilities, "infra.docker");
+    if (!hasDocker) return noMatch();
+
+    return {
+      matched: true,
+      actions: [
+        {
+          id: "ghcr-publish",
+          type: "docker.publish",
+          inputs: { registry: "ghcr.io", image: "${{ github.repository }}" },
+          reason: "Dockerfile detected with deployment trigger.",
+          sourceRule: "docker-publish"
+        }
+      ],
+      reasons: ["Docker infrastructure detected."]
+    };
+  }
+};
+```
+
+#### 4. `@zcicd/resolver`: Ingest Deployment Template
+* **File:** `packages/resolver/src/catalog/starter-workflows.ts`
+```ts
+"deployments/docker-publish.yml": {
+  id: "deployments/docker-publish.yml",
+  name: "Docker Image to GHCR",
+  description: "Publish Docker image to GitHub Container Registry with buildx and cosign.",
+  sourceUrl: "https://github.com/actions/starter-workflows/blob/main/deployments/docker-publish.yml",
+  languages: ["docker"],
+  triggers: ["push"],
+  steps: [
+    {
+      id: "login-ghcr",
+      name: "Log into registry ghcr.io",
+      category: "auth",
+      kind: "uses",
+      uses: "docker/login-action@v3",
+      with: { registry: "ghcr.io", username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+    },
+    {
+      id: "build-push",
+      name: "Build and push Docker image",
+      category: "deploy",
+      kind: "uses",
+      uses: "docker/build-push-action@v6",
+      with: { push: true, tags: "ghcr.io/${{ github.repository }}:latest" }
+    }
+  ]
+}
+```
+
+#### 5. `@zcicd/compiler`: Attach DAG Dependencies & Permissions
+* Deploy jobs must run **only after test jobs succeed**:
+```ts
+jobs.push({
+  id: "publish-container",
+  name: "Publish Docker Image (GHCR)",
+  runsOn: "ubuntu-latest",
+  needs: testJobIds, // <── DAG Dependency: runs only after tests pass!
+  permissions: {
+    contents: "read",
+    packages: "write" // <── Injects package publishing permission
+  },
+  steps: [CHECKOUT_STEP, ...publishSteps]
+});
+```
+
+---
+
+### Category 3: Code Scanning & Security
+*Example: **Hadolint Dockerfile Scanning (`code-scanning/hadolint.yml`)***
+
+#### 1. Ingest into `@zcicd/security`
+* When a `Dockerfile` is detected, `@zcicd/security` automatically resolves `hadolint` and compiles `.github/workflows/code-scanning.yml`:
+```yaml
+name: Code Scanning & Security Analyzers
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  hadolint:
+    name: Dockerfile Lint (Hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: hadolint.sarif
+```
+
+---
+
+## 📋 Integration Checklist for New Tools
+
+Before opening a PR adding a new workflow tool, verify:
+- [ ] **State Types:** Added runtime/tooling name in `@zcicd/state`.
+- [ ] **Filesystem Detector:** Deterministic crawl without false positives (handles root & subdirectories) in `@zcicd/scanner`.
+- [ ] **Capability & Rule:** Declarative capability mapping with provenance evidence in `@zcicd/planner`.
+- [ ] **Catalog Step:** Exact action source URLs and versions in `@zcicd/resolver`.
+- [ ] **DAG Routing:** Independent parallel job with proper `runs-on`, `timeout-minutes`, and `permissions` in `@zcicd/compiler`.
+- [ ] **Optimization Passes:** Caching keys (`cache-dependency-path`) and production hardening configured.
+- [ ] **Unit Tests:** Added detector, planner, and compiler test cases with 100% green coverage (`pnpm -r test`).
 
 ---
 
@@ -135,184 +483,8 @@ pnpm -r test
 - [x] **Phase 4:** Typed Workflow IR & Deterministic Compiler (Job partitioning, DAG cycle validation, YAML emitter)
 - [x] **Phase 5:** Optimization Passes (Dependency Caching, Job Timeouts, Concurrency Cancellation, Matrix Testing)
 - [x] **Phase 6:** Security Policy Compiler (Dependabot, CodeQL, Container scanning, Policy levels)
+- [x] **Phase 6B:** Universal Code Scanning Catalog (Hadolint, Bandit, Brakeman, Semgrep, tfsec, njsscan, OSV, Scorecard)
 - [x] **Phase 7:** Workflow Reconciliation + Automated GitHub PRs (Semantic AST diffing & 1-click PR links)
-- [ ] **Phase 8:** Webhooks & Continuous Adaptation
-- [ ] **Phase 9:** CI Observability (P50/P95 durations, failure rates, cache hit telemetry)
-- [ ] **Phase 10:** Data-Driven Optimization
-
----
-
-## 🛠️ Complete Guide: Adding a New Starter Workflow / Language
-
-Here is the complete step-by-step guide to adding support for any starter workflow from GitHub's [`actions/starter-workflows`](https://github.com/actions/starter-workflows/tree/main). 
-
-Let's use **Rust (`ci/rust.yml`)** as an end-to-end example across all compiler layers.
-
----
-
-### Step 1: Declare the Types in `@zcicd/state`
-* **File:** `packages/state/src/index.ts`
-* Add `"rust"` to `Runtime` and `"cargo"` to `PackageManager`:
-```ts
-export type Runtime = {
-  name: "node" | "python" | "go" | "rust"; // <── Add "rust"
-  version?: string;
-  evidence: Evidence[];
-};
-```
-
----
-
-### Step 2: Create the Detector in `@zcicd/scanner`
-* **File:** `packages/scanner/src/detectors/rust.ts`
-```ts
-import type { Detector, RepositoryContext } from "../detector.js";
-import type { ProjectState } from "@zcicd/state";
-
-export const rustDetector: Detector = {
-  name: "rust",
-
-  async detect(context: RepositoryContext, state: ProjectState): Promise<void> {
-    // 1. Find all Cargo.toml files in the repo
-    const cargoFiles = context.findFiles(f => f.endsWith("Cargo.toml"));
-
-    for (const file of cargoFiles) {
-      state.runtime.push({
-        name: "rust",
-        evidence: [{ source: file, value: "Cargo project detected" }]
-      });
-    }
-
-    // 2. Check for Cargo.lock
-    if (context.findFiles(f => f.endsWith("Cargo.lock")).length > 0) {
-      state.packageManager.push({
-        name: "cargo",
-        evidence: [{ source: "Cargo.lock", value: "lockfile detected" }]
-      });
-    }
-  }
-};
-```
-* **Register it:** In `packages/scanner/src/index.ts`, add `rustDetector` to the `detectors` array.
-
----
-
-### Step 3: Define Capabilities & Rules in `@zcicd/planner`
-
-1. **Add Capability IDs & Action Types in `packages/planner/src/types.ts`:**
-```ts
-export type CapabilityId = 
-  | "runtime.node"
-  | "runtime.rust"     // <── Add capability
-  | ...;
-
-export type ActionType = 
-  | "rust.build"       // <── Add action types
-  | "rust.test"
-  | ...;
-```
-
-2. **Create the Rule in `packages/planner/src/rules/rust.ts`:**
-```ts
-import type { Rule } from "../types.js";
-import { findCapability, formatEvidence, noMatch } from "./helpers.js";
-
-export const rustBuildRule: Rule = {
-  id: "rust-ci",
-  description: "Build and test Rust applications.",
-
-  evaluate(_state, capabilities) {
-    const capability = findCapability(capabilities, "runtime.rust");
-    if (!capability) return noMatch();
-
-    return {
-      matched: true,
-      actions: [
-        {
-          id: "rust-build",
-          type: "rust.build",
-          reason: "Rust / Cargo detected.",
-          sourceRule: "rust-ci"
-        },
-        {
-          id: "rust-test",
-          type: "rust.test",
-          reason: "Rust / Cargo detected.",
-          sourceRule: "rust-ci"
-        }
-      ],
-      reasons: ["Rust project detected.", ...formatEvidence(capability)]
-    };
-  }
-};
-```
-* **Register it:** In `packages/planner/src/planner.ts`, add `rustBuildRule` to the `rules` array.
-
----
-
-### Step 4: Register in the Starter Workflows Catalog & Resolver (`@zcicd/resolver`)
-
-1. **Add to Catalog (`packages/resolver/src/catalog/starter-workflows.ts`):**
-```ts
-"ci/rust.yml": {
-  id: "ci/rust.yml",
-  name: "Rust CI",
-  description: "Build and test a Rust project with Cargo.",
-  sourceUrl: "https://github.com/actions/starter-workflows/blob/main/ci/rust.yml",
-  languages: ["rust"],
-  triggers: ["push", "pull_request"],
-  steps: [
-    { id: "cargo-build", category: "build", kind: "run", run: "cargo build --verbose" },
-    { id: "cargo-test", category: "test", kind: "run", run: "cargo test --verbose" }
-  ]
-}
-```
-
-2. **Add Resolver Functions & Provenance (`packages/resolver/src/resolvers/runtime.ts` & `registry.ts`):**
-```ts
-export function resolveRustBuild(action: PlannedAction): ResolvedPrimitive[] {
-  const template = STARTER_WORKFLOWS_CATALOG["ci/rust.yml"];
-  const buildStep = template.steps.find(s => s.id === "cargo-build");
-  return [
-    {
-      kind: "run",
-      run: buildStep?.run ?? "cargo build --verbose",
-      reason: "Compile Rust crates according to starter workflow.",
-      source: `actions/starter-workflows:${template.id}`,
-      actionId: action.id
-    }
-  ];
-}
-```
-
----
-
-### Step 5: Update the Workflow Builder (`@zcicd/compiler`)
-* In `packages/compiler/src/builder.ts`, route `cargo`/`rust` steps into a dedicated parallel job:
-```ts
-if (rustSteps.length > 0) {
-  const id = "test-rust";
-  testJobIds.push(id);
-  jobs.push({
-    id,
-    name: "Rust CI",
-    runsOn: runner,
-    steps: [CHECKOUT_STEP, ...rustSteps]
-  });
-}
-```
-
----
-
-### Step 6: Build & Test End-to-End!
-1. Rebuild and run unit tests:
-```bash
-pnpm -r build
-pnpm -r test
-```
-2. Test against any live Rust repository:
-```bash
-pnpm --filter @zcicd/cli dev "https://github.com/BurntSushi/ripgrep"
-```
-
-The CLI will scan the repo, match `runtime.rust`, resolve `cargo build`/`cargo test` from `ci/rust.yml`, assemble the `test-rust` job in `WorkflowIR`, and output valid GitHub Actions YAML!
+- [ ] **Phase 8:** Webhooks & Continuous Adaptation (GitHub App / Webhook Daemon / Self-Healing Action)
+- [ ] **Phase 9:** CI Observability (P50/P95 durations, failure rates, compute cost estimation)
+- [ ] **Phase 10:** Data-Driven & Change-Aware Optimization (`paths-filter` selective job execution)

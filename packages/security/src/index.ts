@@ -4,12 +4,14 @@ import { resolveSecurityPolicy } from "./resolver.js";
 import { compileDependabotYAML } from "./compilers/dependabot.js";
 import { compileCodeQLYAML } from "./compilers/codeql.js";
 import { compileSecurityWorkflowYAML } from "./compilers/audit.js";
+import { compileCodeScanningWorkflowYAML } from "./compilers/code-scanning.js";
 
 export * from "./types.js";
 export * from "./resolver.js";
 export * from "./compilers/dependabot.js";
 export * from "./compilers/codeql.js";
 export * from "./compilers/audit.js";
+export * from "./compilers/code-scanning.js";
 
 export function compileSecurityPolicy(
   state: ProjectState,
@@ -24,11 +26,13 @@ export function compileSecurityPolicy(
   const dependabotYaml = compileDependabotYAML(policy);
   const codeqlYaml = compileCodeQLYAML(policy);
   const securityWorkflowYaml = compileSecurityWorkflowYAML(policy);
+  const codeScanningYaml = compileCodeScanningWorkflowYAML(policy);
 
   return {
     policy,
     dependabotYaml: dependabotYaml || undefined,
     codeqlYaml: codeqlYaml || undefined,
-    securityWorkflowYaml: securityWorkflowYaml || undefined
+    securityWorkflowYaml: securityWorkflowYaml || undefined,
+    codeScanningYaml: codeScanningYaml || undefined
   };
 }

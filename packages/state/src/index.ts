@@ -2,14 +2,33 @@ export type RuntimeName =
   | "node"
   | "python"
   | "go"
-  | "rust";
+  | "rust"
+  | "java"
+  | "dotnet"
+  | "ruby"
+  | "php"
+  | "dart"
+  | "elixir"
+  | "cpp"
+  | "deno"
+  | "swift";
 
 export type PackageManagerName =
   | "npm"
   | "pnpm"
   | "yarn"
   | "bun"
-  | "cargo";
+  | "cargo"
+  | "pip"
+  | "poetry"
+  | "gomod"
+  | "maven"
+  | "gradle"
+  | "nuget"
+  | "bundler"
+  | "composer"
+  | "pub"
+  | "mix";
 
 export type Evidence = {
   source: string;

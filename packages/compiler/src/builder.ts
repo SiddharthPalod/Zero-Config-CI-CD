@@ -45,6 +45,15 @@ export function buildWorkflowIR(
   const pythonSteps: WorkflowStep[] = [];
   const goSteps: WorkflowStep[] = [];
   const rustSteps: WorkflowStep[] = [];
+  const javaSteps: WorkflowStep[] = [];
+  const dotnetSteps: WorkflowStep[] = [];
+  const rubySteps: WorkflowStep[] = [];
+  const phpSteps: WorkflowStep[] = [];
+  const dartSteps: WorkflowStep[] = [];
+  const elixirSteps: WorkflowStep[] = [];
+  const cppSteps: WorkflowStep[] = [];
+  const denoSteps: WorkflowStep[] = [];
+  const swiftSteps: WorkflowStep[] = [];
   const dockerSteps: WorkflowStep[] = [];
   const generalSteps: WorkflowStep[] = [];
 
@@ -53,6 +62,7 @@ export function buildWorkflowIR(
     const uses = primitive.kind === "uses" ? primitive.uses : "";
     const run = primitive.kind === "run" ? primitive.run : "";
     const source = primitive.source ?? "";
+    const actionId = primitive.actionId ?? "";
 
     if (
       uses.includes("setup-node") ||
@@ -86,6 +96,63 @@ export function buildWorkflowIR(
       run.startsWith("go\t")
     ) {
       goSteps.push(step);
+    } else if (
+      uses.includes("setup-java") ||
+      uses.includes("setup-gradle") ||
+      source.includes("maven") ||
+      source.includes("gradle") ||
+      run.includes("mvn ") ||
+      run.includes("./gradlew")
+    ) {
+      javaSteps.push(step);
+    } else if (
+      uses.includes("setup-dotnet") ||
+      source.includes("dotnet") ||
+      run.startsWith("dotnet")
+    ) {
+      dotnetSteps.push(step);
+    } else if (
+      uses.includes("setup-ruby") ||
+      source.includes("ruby") ||
+      run.startsWith("bundle")
+    ) {
+      rubySteps.push(step);
+    } else if (
+      uses.includes("setup-php") ||
+      source.includes("php") ||
+      run.includes("composer") ||
+      run.includes("phpunit")
+    ) {
+      phpSteps.push(step);
+    } else if (
+      uses.includes("setup-dart") ||
+      source.includes("dart") ||
+      run.startsWith("dart")
+    ) {
+      dartSteps.push(step);
+    } else if (
+      uses.includes("setup-beam") ||
+      source.includes("elixir") ||
+      run.startsWith("mix")
+    ) {
+      elixirSteps.push(step);
+    } else if (
+      source.includes("cmake") ||
+      run.includes("cmake") ||
+      run.includes("ctest")
+    ) {
+      cppSteps.push(step);
+    } else if (
+      uses.includes("setup-deno") ||
+      source.includes("deno") ||
+      run.startsWith("deno")
+    ) {
+      denoSteps.push(step);
+    } else if (
+      source.includes("swift") ||
+      run.startsWith("swift")
+    ) {
+      swiftSteps.push(step);
     } else if (uses.includes("docker") || source.includes("docker")) {
       dockerSteps.push(step);
     } else {
@@ -137,6 +204,105 @@ export function buildWorkflowIR(
       name: "Rust CI",
       runsOn: runner,
       steps: [CHECKOUT_STEP, ...rustSteps]
+    });
+  }
+
+  if (javaSteps.length > 0) {
+    const id = "test-java";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Java CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...javaSteps]
+    });
+  }
+
+  if (dotnetSteps.length > 0) {
+    const id = "test-dotnet";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: ".NET CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...dotnetSteps]
+    });
+  }
+
+  if (rubySteps.length > 0) {
+    const id = "test-ruby";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Ruby CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...rubySteps]
+    });
+  }
+
+  if (phpSteps.length > 0) {
+    const id = "test-php";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "PHP CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...phpSteps]
+    });
+  }
+
+  if (dartSteps.length > 0) {
+    const id = "test-dart";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Dart CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...dartSteps]
+    });
+  }
+
+  if (elixirSteps.length > 0) {
+    const id = "test-elixir";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Elixir CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...elixirSteps]
+    });
+  }
+
+  if (cppSteps.length > 0) {
+    const id = "test-cpp";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "C/C++ CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...cppSteps]
+    });
+  }
+
+  if (denoSteps.length > 0) {
+    const id = "test-deno";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Deno CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...denoSteps]
+    });
+  }
+
+  if (swiftSteps.length > 0) {
+    const id = "test-swift";
+    testJobIds.push(id);
+    jobs.push({
+      id,
+      name: "Swift CI",
+      runsOn: runner,
+      steps: [CHECKOUT_STEP, ...swiftSteps]
     });
   }
 

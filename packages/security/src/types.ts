@@ -6,7 +6,14 @@ export type DependabotEcosystem =
   | "pip"
   | "gomod"
   | "docker"
-  | "github-actions";
+  | "github-actions"
+  | "maven"
+  | "gradle"
+  | "nuget"
+  | "bundler"
+  | "composer"
+  | "pub"
+  | "mix";
 
 export type DependabotTarget = {
   packageEcosystem: DependabotEcosystem;
@@ -27,7 +34,31 @@ export type CodeQLLanguage =
   | "c-cpp"
   | "ruby"
   | "java-kotlin"
-  | "csharp";
+  | "csharp"
+  | "swift";
+
+export type CodeScanningScanner =
+  | "semgrep"
+  | "hadolint"
+  | "tfsec"
+  | "kubesec"
+  | "bandit"
+  | "brakeman"
+  | "sobelow"
+  | "clippy"
+  | "njsscan"
+  | "flawfinder"
+  | "scorecard"
+  | "dependency-review"
+  | "osv-scanner"
+  | "syft";
+
+export type CodeScanningTargetConfig = {
+  tool: CodeScanningScanner;
+  targetPath?: string;
+  failOnError: boolean;
+  uploadSarif: boolean;
+};
 
 export type SecurityPolicyIR = {
   level: SecurityLevel;
@@ -40,6 +71,10 @@ export type SecurityPolicyIR = {
     enabled: boolean;
     languages: CodeQLLanguage[];
     scheduleCron?: string;
+  };
+  codeScanning: {
+    enabled: boolean;
+    scanners: CodeScanningTargetConfig[];
   };
   containerScanning: {
     enabled: boolean;
@@ -61,4 +96,5 @@ export type GeneratedSecurityArtifacts = {
   dependabotYaml?: string;
   codeqlYaml?: string;
   securityWorkflowYaml?: string;
+  codeScanningYaml?: string;
 };

@@ -273,6 +273,9 @@ export async function runInteractiveWizardV2(): Promise<void> {
         if (securityArtifacts.securityWorkflowYaml) {
           note(securityArtifacts.securityWorkflowYaml, "Generated Security Scans (.github/workflows/security.yml)");
         }
+        if (securityArtifacts.codeScanningYaml) {
+          note(securityArtifacts.codeScanningYaml, "Generated Code Scanning SAST (.github/workflows/code-scanning.yml)");
+        }
 
         // Assemble all generated files
         const generatedFiles: Array<{ relativePath: string; content: string }> = [
@@ -286,6 +289,9 @@ export async function runInteractiveWizardV2(): Promise<void> {
         }
         if (securityArtifacts.securityWorkflowYaml) {
           generatedFiles.push({ relativePath: ".github/workflows/security.yml", content: securityArtifacts.securityWorkflowYaml });
+        }
+        if (securityArtifacts.codeScanningYaml) {
+          generatedFiles.push({ relativePath: ".github/workflows/code-scanning.yml", content: securityArtifacts.codeScanningYaml });
         }
 
         // 5. Unified Delivery: Git Branching by Default

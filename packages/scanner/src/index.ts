@@ -1,13 +1,20 @@
 import type { ProjectState } from "@zcicd/state";
-import {
-  createRepositoryContext
-} from "./context.js";
+import { createRepositoryContext } from "./context.js";
 
 import { nodeDetector } from "./detectors/node.js";
 import { dockerDetector } from "./detectors/docker.js";
 import { pythonDetector } from "./detectors/python.js";
 import { goDetector } from "./detectors/go.js";
 import { rustDetector } from "./detectors/rust.js";
+import { javaDetector } from "./detectors/java.js";
+import { dotnetDetector } from "./detectors/dotnet.js";
+import { rubyDetector } from "./detectors/ruby.js";
+import { phpDetector } from "./detectors/php.js";
+import { dartDetector } from "./detectors/dart.js";
+import { elixirDetector } from "./detectors/elixir.js";
+import { cppDetector } from "./detectors/cpp.js";
+import { denoDetector } from "./detectors/deno.js";
+import { swiftDetector } from "./detectors/swift.js";
 
 const detectors = [
   nodeDetector,
@@ -15,13 +22,19 @@ const detectors = [
   goDetector,
   dockerDetector,
   rustDetector,
+  javaDetector,
+  dotnetDetector,
+  rubyDetector,
+  phpDetector,
+  dartDetector,
+  elixirDetector,
+  cppDetector,
+  denoDetector,
+  swiftDetector
 ];
 
-export async function scanRepository(
-  root: string
-): Promise<ProjectState> {
-  const context =
-    await createRepositoryContext(root);
+export async function scanRepository(root: string): Promise<ProjectState> {
+  const context = await createRepositoryContext(root);
 
   const state: ProjectState = {
     runtime: [],
